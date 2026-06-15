@@ -14,17 +14,11 @@ export class TransferRepository {
   ) {
     const { data } = await db
       .from("stock_transfers")
-      .select(
-        `
+      .select(`
         *,
-        stock_transfer_items(
-          *
-        ),
-        transfer_events(
-          *
-        )
-      `
-      )
+        stock_transfer_items(*),
+        transfer_events(*)
+      `)
       .eq("id", id)
       .single();
 
@@ -68,12 +62,9 @@ export class TransferRepository {
       count,
       error,
     } = await query
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
-      )
+      .order("created_at", {
+        ascending: false,
+      })
       .range(from, to);
 
     if (error) {
@@ -87,10 +78,7 @@ export class TransferRepository {
   }
 
   async generateTransferNo() {
-    const transferNo =
-      `TRF-${Date.now()}`;
-
-    return transferNo;
+    return `TRF-${Date.now()}`;
   }
 
   async createTransfer(
@@ -104,29 +92,19 @@ export class TransferRepository {
     } = await db
       .from("stock_transfers")
       .insert({
-        transfer_no:
-          transferNo,
-
+        transfer_no: transferNo,
         source_warehouse_id:
           dto.source_warehouse_id,
-
         destination_warehouse_id:
           dto.destination_warehouse_id,
-
         source_location_id:
           dto.source_location_id,
-
         destination_location_id:
           dto.destination_location_id,
-
-        status:
-          "DRAFT",
-
+        status: "DRAFT",
         remarks:
           dto.remarks ?? null,
-
-        requested_by:
-          userId,
+        requested_by: userId,
       })
       .select()
       .single();
@@ -143,28 +121,16 @@ export class TransferRepository {
     items: CreateTransferDto["items"]
   ) {
     const payload =
-      items.map(
-        (
-          item
-        ) => ({
-          transfer_id:
-            transferId,
+      items.map((item) => ({
+        transfer_id: transferId,
+        item_id: item.item_id,
+        qty_requested:
+          item.qty_requested,
+        qty_shipped: 0,
+        qty_received: 0,
+      }));
 
-          item_id:
-            item.item_id,
-
-          qty_requested:
-            item.qty_requested,
-
-          qty_shipped: 0,
-
-          qty_received: 0,
-        })
-      );
-
-    const {
-      error,
-    } = await db
+    const { error } = await db
       .from(
         "stock_transfer_items"
       )
@@ -228,13 +194,52 @@ export class TransferRepository {
     return data;
   }
 
+  async updateStatusIfCurrent(
+    transferId: string,
+    currentStatus: TransferStatus,
+    nextStatus: TransferStatus,
+    payload?: Record<
+      string,
+      unknown
+    >
+  ) {
+    const {
+      data,
+      error,
+    } = await db
+      .from(
+        "stock_transfers"
+      )
+      .update({
+        status: nextStatus,
+        ...payload,
+      })
+      .eq("id", transferId)
+      .eq(
+        "status",
+        currentStatus
+      )
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      throw new Error(
+        "Transfer status already changed"
+      );
+    }
+
+    return data;
+  }
+
   async updateItemShippedQty(
     itemId: string,
     qty: number
   ) {
-    const {
-      error,
-    } = await db
+    const { error } = await db
       .from(
         "stock_transfer_items"
       )
@@ -252,15 +257,12 @@ export class TransferRepository {
     itemId: string,
     qty: number
   ) {
-    const {
-      error,
-    } = await db
+    const { error } = await db
       .from(
         "stock_transfer_items"
       )
       .update({
-        qty_received:
-          qty,
+        qty_received: qty,
       })
       .eq("id", itemId);
 
@@ -280,25 +282,16 @@ export class TransferRepository {
     userId: string,
     remarks?: string
   ) {
-    const {
-      error,
-    } = await db
+    const { error } = await db
       .from(
         "transfer_events"
       )
       .insert({
-        transfer_id:
-          transferId,
-
-        event_type:
-          eventType,
-
-        event_by:
-          userId,
-
+        transfer_id: transferId,
+        event_type: eventType,
+        event_by: userId,
         remarks:
-          remarks ??
-          null,
+          remarks ?? null,
       });
 
     if (error) {
@@ -321,12 +314,9 @@ export class TransferRepository {
         "transfer_id",
         transferId
       )
-      .order(
-        "created_at",
-        {
-          ascending: true,
-        }
-      );
+      .order("created_at", {
+        ascending: true,
+      });
 
     if (error) {
       throw error;

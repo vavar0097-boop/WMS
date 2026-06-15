@@ -215,4 +215,25 @@ export class StockRepository {
 
     return data;
   }
+
+  async getCurrentStock(
+  itemId: string,
+  locationId: string
+) {
+  const {
+    data,
+    error,
+  } = await db
+    .from("current_stocks")
+    .select("quantity")
+    .eq("item_id", itemId)
+    .eq("location_id", locationId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.quantity ?? 0;
+}
 }

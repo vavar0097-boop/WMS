@@ -1,14 +1,25 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TransferService = void 0;
-const client_1 = require("../../../database/client");
 const transfer_repository_1 = require("../repositories/transfer.repository");
+const stock_repository_1 = require("../../stocks/repositories/stock.repository");
 class TransferService {
     repository;
-    constructor(repository = new transfer_repository_1.TransferRepository()) {
+    stockRepository;
+    constructor(repository = new transfer_repository_1.TransferRepository(), stockRepository = new stock_repository_1.StockRepository()) {
         this.repository = repository;
+        this.stockRepository = stockRepository;
     }
     async create(dto, user) {
+        if (dto.source_location_id ===
+            dto.destination_location_id) {
+            throw new Error("Source and destination location cannot be the same");
+        }
+        for (const item of dto.items) {
+            if (item.qty_requested <= 0) {
+                throw new Error("Quantity must be greater than zero");
+            }
+        }
         const transferNo = await this.repository.generateTransferNo();
         const transfer = await this.repository.createTransfer(dto, transferNo, user.id);
         await this.repository.createTransferItems(transfer.id, dto.items);
@@ -43,13 +54,24 @@ class TransferService {
         }
         const items = await this.repository.getTransferItems(transferId);
         for (const item of items) {
-            await client_1.db.rpc("create_stock_movement", {
-                p_item_id: item.item_id,
-                p_location_id: transfer.source_location_id,
-                p_movement_type: "OUT",
-                p_qty: item.qty_requested,
-                p_reference_type: "TRANSFER",
-                p_reference_id: transferId,
+            const available = await this.stockRepository.getCurrentStock(item.item_id, transfer.source_location_id);
+            if (available <
+                item.qty_requested) {
+                throw new Error(`Insufficient stock for item ${item.item_id}`);
+            }
+            await this.stockRepository.createStockMovement({
+                item_id: item.item_id,
+                location_id: transfer.source_location_id,
+                movement_type: "OUT",
+                quantity: item.qty_requested,
+                reference_type: "TRANSFER",
+                reference_id: transferId,
+                reference_no: transfer.transfer_no ??
+                    null,
+                remarks: dto.remarks ??
+                    null,
+                created_by: user.id,
+                stock_effect: "MINUS",
             });
             await this.repository.updateItemShippedQty(item.id, item.qty_requested);
         }
@@ -80,13 +102,19 @@ class TransferService {
         }
         const items = await this.repository.getTransferItems(transferId);
         for (const item of items) {
-            await client_1.db.rpc("create_stock_movement", {
-                p_item_id: item.item_id,
-                p_location_id: transfer.destination_location_id,
-                p_movement_type: "IN",
-                p_qty: item.qty_shipped,
-                p_reference_type: "TRANSFER",
-                p_reference_id: transferId,
+            await this.stockRepository.createStockMovement({
+                item_id: item.item_id,
+                location_id: transfer.destination_location_id,
+                movement_type: "IN",
+                quantity: item.qty_shipped,
+                reference_type: "TRANSFER",
+                reference_id: transferId,
+                reference_no: transfer.transfer_no ??
+                    null,
+                remarks: dto.remarks ??
+                    null,
+                created_by: user.id,
+                stock_effect: "PLUS",
             });
             await this.repository.updateItemReceivedQty(item.id, item.qty_shipped);
         }

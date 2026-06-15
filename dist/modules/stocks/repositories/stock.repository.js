@@ -95,6 +95,18 @@ class StockRepository {
         }
         return data;
     }
+    async getCurrentStock(itemId, locationId) {
+        const { data, error, } = await client_1.db
+            .from("current_stocks")
+            .select("quantity")
+            .eq("item_id", itemId)
+            .eq("location_id", locationId)
+            .maybeSingle();
+        if (error) {
+            throw error;
+        }
+        return data?.quantity ?? 0;
+    }
 }
 exports.StockRepository = StockRepository;
 //# sourceMappingURL=stock.repository.js.map
