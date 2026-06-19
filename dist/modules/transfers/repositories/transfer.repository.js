@@ -8,12 +8,8 @@ class TransferRepository {
             .from("stock_transfers")
             .select(`
         *,
-        stock_transfer_items(
-          *
-        ),
-        transfer_events(
-          *
-        )
+        stock_transfer_items(*),
+        transfer_events(*)
       `)
             .eq("id", id)
             .single();
@@ -47,8 +43,7 @@ class TransferRepository {
         };
     }
     async generateTransferNo() {
-        const transferNo = `TRF-${Date.now()}`;
-        return transferNo;
+        return `TRF-${Date.now()}`;
     }
     async createTransfer(dto, transferNo, userId) {
         const { data, error, } = await client_1.db
@@ -78,7 +73,7 @@ class TransferRepository {
             qty_shipped: 0,
             qty_received: 0,
         }));
-        const { error, } = await client_1.db
+        const { error } = await client_1.db
             .from("stock_transfer_items")
             .insert(payload);
         if (error) {
@@ -110,8 +105,27 @@ class TransferRepository {
         }
         return data;
     }
+    async updateStatusIfCurrent(transferId, currentStatus, nextStatus, payload) {
+        const { data, error, } = await client_1.db
+            .from("stock_transfers")
+            .update({
+            status: nextStatus,
+            ...payload,
+        })
+            .eq("id", transferId)
+            .eq("status", currentStatus)
+            .select()
+            .maybeSingle();
+        if (error) {
+            throw error;
+        }
+        if (!data) {
+            throw new Error("Transfer status already changed");
+        }
+        return data;
+    }
     async updateItemShippedQty(itemId, qty) {
-        const { error, } = await client_1.db
+        const { error } = await client_1.db
             .from("stock_transfer_items")
             .update({
             qty_shipped: qty,
@@ -122,7 +136,7 @@ class TransferRepository {
         }
     }
     async updateItemReceivedQty(itemId, qty) {
-        const { error, } = await client_1.db
+        const { error } = await client_1.db
             .from("stock_transfer_items")
             .update({
             qty_received: qty,
@@ -133,14 +147,13 @@ class TransferRepository {
         }
     }
     async createEvent(transferId, eventType, userId, remarks) {
-        const { error, } = await client_1.db
+        const { error } = await client_1.db
             .from("transfer_events")
             .insert({
             transfer_id: transferId,
             event_type: eventType,
             event_by: userId,
-            remarks: remarks ??
-                null,
+            notes: remarks ?? null,
         });
         if (error) {
             throw error;

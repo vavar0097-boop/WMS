@@ -9,6 +9,7 @@ const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const morgan_1 = __importDefault(require("morgan"));
+const transfer_route_1 = __importDefault(require("./modules/transfers/routes/transfer.route"));
 const logger_1 = require("./config/logger");
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
@@ -40,5 +41,6 @@ const item_route_1 = __importDefault(require("./modules/items/routes/item.route"
 app.use("/api/items", item_route_1.default);
 const stock_route_1 = __importDefault(require("./modules/stocks/routes/stock.route"));
 app.use("/api/stocks", stock_route_1.default);
+app.use("/api/transfers", transfer_route_1.default);
 exports.default = app;
 //# sourceMappingURL=app.js.map
