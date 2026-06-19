@@ -18,5 +18,16 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => Promise.reject(error),
+  (error) => {
+    const status = error?.response?.status;
+    const currentPath = window.location.pathname;
+
+    if (status === 401 && currentPath !== "/login") {
+      window.dispatchEvent(
+        new CustomEvent("wms:auth-expired"),
+      );
+    }
+
+    return Promise.reject(error);
+  },
 );
