@@ -1,1 +1,39 @@
-node_modules
+# dependencies
+node_modules/
+**/node_modules/
+
+# build outputs
+dist/
+build/
+coverage/
+**/dist/
+**/build/
+**/coverage/
+
+# env
+.env
+.env.local
+.env.*.local
+apps/api/.env
+apps/web/.env
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# TypeScript
+*.tsbuildinfo
+node_modules/.tmp/
+
+# cache
+.cache/
+.vite/
