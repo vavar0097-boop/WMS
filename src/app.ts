@@ -4,7 +4,7 @@ import helmet from "helmet";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
-
+import transferRoutes from "./modules/transfers/routes/transfer.route";
 import { logger } from "./config/logger";
 
 const app = express();
@@ -65,6 +65,11 @@ from "./modules/stocks/routes/stock.route";
 app.use(
   "/api/stocks",
   stockRoutes
+);
+
+app.use(
+  "/api/transfers",
+  transferRoutes
 );
 
 export default app;

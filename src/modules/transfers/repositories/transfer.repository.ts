@@ -290,7 +290,7 @@ export class TransferRepository {
         transfer_id: transferId,
         event_type: eventType,
         event_by: userId,
-        remarks:
+        notes:
           remarks ?? null,
       });
 
