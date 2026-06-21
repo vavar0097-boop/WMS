@@ -1,11 +1,18 @@
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
 import compression from "compression";
 import cookieParser from "cookie-parser";
+import cors from "cors";
+import express from "express";
+import helmet from "helmet";
 import morgan from "morgan";
-import transferRoutes from "./modules/transfers/routes/transfer.route";
+
 import { logger } from "./config/logger";
+import { errorMiddleware } from "./middleware/error.middleware";
+import itemRoutes from "./modules/items/routes/item.route";
+import locationRoutes from "./modules/locations/location.routes";
+import stockRoutes from "./modules/stocks/routes/stock.route";
+import transferRoutes from "./modules/transfers/routes/transfer.route";
+import warehouseRoutes from "./modules/warehouses/warehouse.routes";
+import authRoutes from "./routes/auth.routes";
 
 const app = express();
 
@@ -13,15 +20,12 @@ app.use(
   cors({
     origin: true,
     credentials: true,
-  })
+  }),
 );
 
 app.use(helmet());
-
 app.use(compression());
-
 app.use(cookieParser());
-
 app.use(express.json());
 
 app.use(
@@ -31,7 +35,7 @@ app.use(
         logger.info(message.trim());
       },
     },
-  })
+  }),
 );
 
 app.get("/health", (_req, res) => {
@@ -41,35 +45,14 @@ app.get("/health", (_req, res) => {
   });
 });
 
-import { errorMiddleware } from "./middleware/error.middleware";
+app.use("/api/auth", authRoutes);
+app.use("/api/items", itemRoutes);
+app.use("/api/stocks", stockRoutes);
+app.use("/api/transfers", transferRoutes);
+app.use("/api/warehouses", warehouseRoutes);
+app.use("/api/locations", locationRoutes);
 
+// Error middleware wajib dipasang setelah seluruh route.
 app.use(errorMiddleware);
 
-import authRoutes
-from "./routes/auth.routes";
-app.use(
-  "/api/auth",
-  authRoutes
-);
-
-import itemRoutes
-  from "./modules/items/routes/item.route";
-
-app.use(
-  "/api/items",
-  itemRoutes
-);
-
-import stockRoutes
-from "./modules/stocks/routes/stock.route";
-app.use(
-  "/api/stocks",
-  stockRoutes
-);
-
-app.use(
-  "/api/transfers",
-  transferRoutes
-);
-
-export default app;
+export default app; 
