@@ -1,5 +1,10 @@
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { getApiErrorMessage } from "@/shared/lib/api/error";
@@ -30,59 +35,39 @@ type FormItem = {
 };
 
 function warehouseLabel(warehouse: WarehouseOption) {
-  return (
-    warehouse.code ||
-    warehouse.warehouse_code ||
-    warehouse.name ||
-    warehouse.warehouse_name ||
-    warehouse.id
-  );
+  return `${warehouse.code} - ${warehouse.name}`;
 }
 
 function locationLabel(location: LocationOption) {
-  return (
-    location.code ||
-    location.location_code ||
-    location.name ||
-    location.location_name ||
-    location.id
-  );
+  return `${location.code} - ${location.name}`;
 }
 
 function itemLabel(item: ItemOption) {
-  const code = item.item_code || "";
-  const name = item.item_name || item.name || item.id;
-  const unit = item.unit_code || item.unit_name || "";
+  const unit = item.unit_code || item.unit_name;
 
-  return `${code ? `${code} - ` : ""}${name}${unit ? ` (${unit})` : ""}`;
+  return `${item.item_code} - ${item.item_name}${
+    unit ? ` (${unit})` : ""
+  }`;
 }
 
 export function CreateTransferPage() {
   const navigate = useNavigate();
   const { createTransfer, creating } = useTransferStore();
 
-  const [warehouses, setWarehouses] = useState<WarehouseOption[]>(
-    [],
-  );
-  const [locations, setLocations] = useState<LocationOption[]>(
-    [],
-  );
+  const [warehouses, setWarehouses] = useState<WarehouseOption[]>([]);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
   const [items, setItems] = useState<ItemOption[]>([]);
-  const [usingFallback, setUsingFallback] = useState(false);
   const [loadingMaster, setLoadingMaster] = useState(true);
+  const [masterDataError, setMasterDataError] = useState<string | null>(
+    null,
+  );
 
-  const [
-    sourceWarehouseId,
-    setSourceWarehouseId,
-  ] = useState("");
+  const [sourceWarehouseId, setSourceWarehouseId] = useState("");
   const [
     destinationWarehouseId,
     setDestinationWarehouseId,
   ] = useState("");
-  const [
-    sourceLocationId,
-    setSourceLocationId,
-  ] = useState("");
+  const [sourceLocationId, setSourceLocationId] = useState("");
   const [
     destinationLocationId,
     setDestinationLocationId,
@@ -100,6 +85,7 @@ export function CreateTransferPage() {
     async function loadMasterData() {
       try {
         setLoadingMaster(true);
+        setMasterDataError(null);
 
         const [
           warehouseResult,
@@ -111,48 +97,35 @@ export function CreateTransferPage() {
           masterDataService.getItems(),
         ]);
 
-        setWarehouses(warehouseResult.data);
-        setLocations(locationResult.data);
-        setItems(itemResult.data);
+        setWarehouses(warehouseResult);
+        setLocations(locationResult);
+        setItems(itemResult);
 
-        setUsingFallback(
-          warehouseResult.usingFallback ||
-            locationResult.usingFallback ||
-            itemResult.usingFallback,
-        );
-
-        const firstWarehouse = warehouseResult.data[0];
-        const firstSourceLocation = locationResult.data[0];
-        const firstDestinationLocation =
-          locationResult.data[1] || locationResult.data[0];
-        const firstItem = itemResult.data[0];
+        const firstWarehouse = warehouseResult[0];
+        const secondWarehouse =
+          warehouseResult[1] || firstWarehouse;
 
         if (firstWarehouse) {
           setSourceWarehouseId(firstWarehouse.id);
-          setDestinationWarehouseId(firstWarehouse.id);
         }
 
-        if (firstSourceLocation) {
-          setSourceLocationId(firstSourceLocation.id);
+        if (secondWarehouse) {
+          setDestinationWarehouseId(secondWarehouse.id);
         }
 
-        if (firstDestinationLocation) {
-          setDestinationLocationId(firstDestinationLocation.id);
-        }
-
-        if (firstItem) {
+        if (itemResult[0]) {
           setFormItems([
             {
-              item_id: firstItem.id,
+              item_id: itemResult[0].id,
               qty_requested: 1,
             },
           ]);
         }
       } catch (error) {
-        toast.error(
-          "Failed to load master data",
-          getApiErrorMessage(error),
-        );
+        const message = getApiErrorMessage(error);
+
+        setMasterDataError(message);
+        toast.error("Failed to load master data", message);
       } finally {
         setLoadingMaster(false);
       }
@@ -161,35 +134,75 @@ export function CreateTransferPage() {
     loadMasterData();
   }, []);
 
-  const sourceLocations = useMemo(() => {
-    const filtered = locations.filter(
-      (location) =>
-        !location.warehouse_id ||
-        location.warehouse_id === sourceWarehouseId,
-    );
+  const sourceLocations = useMemo(
+    () =>
+      locations.filter(
+        (location) =>
+          location.warehouse_id === sourceWarehouseId,
+      ),
+    [locations, sourceWarehouseId],
+  );
 
-    return filtered.length > 0 ? filtered : locations;
-  }, [locations, sourceWarehouseId]);
+  const destinationLocations = useMemo(
+    () =>
+      locations.filter(
+        (location) =>
+          location.warehouse_id === destinationWarehouseId,
+      ),
+    [destinationWarehouseId, locations],
+  );
 
-  const destinationLocations = useMemo(() => {
-    const filtered = locations.filter(
-      (location) =>
-        !location.warehouse_id ||
-        location.warehouse_id === destinationWarehouseId,
-    );
+  useEffect(() => {
+    if (
+      !sourceLocations.some(
+        (location) => location.id === sourceLocationId,
+      )
+    ) {
+      setSourceLocationId(sourceLocations[0]?.id || "");
+    }
+  }, [sourceLocationId, sourceLocations]);
 
-    return filtered.length > 0 ? filtered : locations;
-  }, [locations, destinationWarehouseId]);
+  useEffect(() => {
+    if (
+      !destinationLocations.some(
+        (location) => location.id === destinationLocationId,
+      )
+    ) {
+      const differentLocation = destinationLocations.find(
+        (location) => location.id !== sourceLocationId,
+      );
+
+      setDestinationLocationId(
+        differentLocation?.id ||
+          destinationLocations[0]?.id ||
+          "",
+      );
+    }
+  }, [
+    destinationLocationId,
+    destinationLocations,
+    sourceLocationId,
+  ]);
 
   const hasSameLocation =
     Boolean(sourceLocationId) &&
     sourceLocationId === destinationLocationId;
 
+  const hasDuplicateItems =
+    new Set(formItems.map((item) => item.item_id)).size !==
+    formItems.length;
+
   const hasValidItems = formItems.every(
     (item) =>
       Boolean(item.item_id) &&
-      Number(item.qty_requested) > 0,
+      Number.isFinite(item.qty_requested) &&
+      item.qty_requested > 0,
   );
+
+  const hasMasterData =
+    warehouses.length > 0 &&
+    locations.length > 0 &&
+    items.length > 0;
 
   const canSubmit =
     Boolean(sourceWarehouseId) &&
@@ -197,9 +210,12 @@ export function CreateTransferPage() {
     Boolean(sourceLocationId) &&
     Boolean(destinationLocationId) &&
     !hasSameLocation &&
+    !hasDuplicateItems &&
     hasValidItems &&
+    hasMasterData &&
     !creating &&
-    !loadingMaster;
+    !loadingMaster &&
+    !masterDataError;
 
   function updateItem(
     index: number,
@@ -218,10 +234,17 @@ export function CreateTransferPage() {
   }
 
   function addItemRow() {
+    const selectedItemIds = new Set(
+      formItems.map((item) => item.item_id),
+    );
+    const nextItem = items.find(
+      (item) => !selectedItemIds.has(item.id),
+    );
+
     setFormItems((current) => [
       ...current,
       {
-        item_id: items[0]?.id || "",
+        item_id: nextItem?.id || "",
         qty_requested: 1,
       },
     ]);
@@ -231,18 +254,27 @@ export function CreateTransferPage() {
     setFormItems((current) =>
       current.length === 1
         ? current
-        : current.filter((_, itemIndex) => itemIndex !== index),
+        : current.filter(
+            (_, itemIndex) => itemIndex !== index,
+          ),
     );
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     if (!canSubmit) {
       if (hasSameLocation) {
         toast.error(
           "Invalid transfer",
-          "Source location and destination location cannot be the same.",
+          "Source and destination location cannot be the same.",
+        );
+      } else if (hasDuplicateItems) {
+        toast.error(
+          "Duplicate item",
+          "Each item can only be added once per transfer.",
         );
       }
 
@@ -267,11 +299,11 @@ export function CreateTransferPage() {
         "Draft transfer has been created successfully.",
       );
 
-      if (transfer?.id) {
-        navigate(`/dashboard/transfers/${transfer.id}`);
-      } else {
-        navigate("/dashboard/transfers");
-      }
+      navigate(
+        transfer?.id
+          ? `/dashboard/transfers/${transfer.id}`
+          : "/dashboard/transfers",
+      );
     } catch (error) {
       toast.error(
         "Failed to create transfer",
@@ -281,10 +313,7 @@ export function CreateTransferPage() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-6"
-    >
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <Link
@@ -299,27 +328,25 @@ export function CreateTransferPage() {
             Create Transfer
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Create a draft transfer document before request, pick, dispatch, and receive.
+            Create a draft transfer document before request,
+            pick, dispatch, and receive.
           </p>
         </div>
 
-        <Button
-          type="submit"
-          disabled={!canSubmit}
-        >
+        <Button type="submit" disabled={!canSubmit}>
           {creating ? "Creating..." : "Create Draft"}
         </Button>
       </div>
 
-      {usingFallback ? (
-        <div className="rounded-2xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
-          Temporary dev fallback is active because one or more master-data endpoints are not ready.
-          This fallback only runs in development mode and can be disabled with
-          {" "}
-          <span className="font-semibold">
-            VITE_ENABLE_DEV_FALLBACK=false
-          </span>
-          .
+      {masterDataError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Master data could not be loaded: {masterDataError}
+        </div>
+      ) : null}
+
+      {!loadingMaster && !masterDataError && !hasMasterData ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Warehouse, location, or item master data is empty.
         </div>
       ) : null}
 
@@ -365,9 +392,7 @@ export function CreateTransferPage() {
                   value={destinationWarehouseId}
                   disabled={loadingMaster}
                   onChange={(event) =>
-                    setDestinationWarehouseId(
-                      event.target.value,
-                    )
+                    setDestinationWarehouseId(event.target.value)
                   }
                 >
                   <option value="">
@@ -390,7 +415,9 @@ export function CreateTransferPage() {
                 </label>
                 <Select
                   value={sourceLocationId}
-                  disabled={loadingMaster}
+                  disabled={
+                    loadingMaster || !sourceWarehouseId
+                  }
                   onChange={(event) =>
                     setSourceLocationId(event.target.value)
                   }
@@ -413,11 +440,11 @@ export function CreateTransferPage() {
                 </label>
                 <Select
                   value={destinationLocationId}
-                  disabled={loadingMaster}
+                  disabled={
+                    loadingMaster || !destinationWarehouseId
+                  }
                   onChange={(event) =>
-                    setDestinationLocationId(
-                      event.target.value,
-                    )
+                    setDestinationLocationId(event.target.value)
                   }
                 >
                   <option value="">
@@ -435,7 +462,8 @@ export function CreateTransferPage() {
 
                 {hasSameLocation ? (
                   <p className="mt-2 text-xs font-medium text-red-600">
-                    Source and destination location cannot be the same.
+                    Source and destination location cannot be the
+                    same.
                   </p>
                 ) : null}
               </div>
@@ -453,8 +481,8 @@ export function CreateTransferPage() {
             <CardContent className="space-y-4">
               {formItems.map((item, index) => (
                 <div
-                  key={`${index}-${item.item_id}`}
-                  className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_160px_44px]"
+                  key={index}
+                  className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_160px_44px]"
                 >
                   <div>
                     <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -488,6 +516,7 @@ export function CreateTransferPage() {
                     <Input
                       type="number"
                       min={1}
+                      step={1}
                       value={item.qty_requested}
                       onChange={(event) =>
                         updateItem(index, {
@@ -506,6 +535,7 @@ export function CreateTransferPage() {
                       className="h-10 w-10 px-0"
                       disabled={formItems.length === 1}
                       onClick={() => removeItemRow(index)}
+                      aria-label="Remove item"
                     >
                       <Trash2 size={16} />
                     </Button>
@@ -513,9 +543,19 @@ export function CreateTransferPage() {
                 </div>
               ))}
 
+              {hasDuplicateItems ? (
+                <p className="text-xs font-medium text-red-600">
+                  Duplicate items are not allowed.
+                </p>
+              ) : null}
+
               <Button
                 type="button"
                 variant="outline"
+                disabled={
+                  loadingMaster ||
+                  formItems.length >= items.length
+                }
                 onClick={addItemRow}
               >
                 <Plus size={16} />
@@ -542,7 +582,7 @@ export function CreateTransferPage() {
               }
             />
 
-            <div className="mt-6 rounded-2xl bg-slate-50 p-4">
+            <div className="mt-6 rounded-lg bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-950">
                 Flow Preview
               </p>

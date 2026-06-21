@@ -3,152 +3,181 @@ import { apiClient } from "@/shared/lib/api/client";
 import type {
   ItemOption,
   LocationOption,
-  MasterDataResult,
   WarehouseOption,
 } from "../types/transfer.types";
 
-const enableDevFallback =
-  import.meta.env.DEV &&
-  import.meta.env.VITE_ENABLE_DEV_FALLBACK !== "false";
+type UnknownRecord = Record<string, unknown>;
 
-const devWarehouses: WarehouseOption[] = [
-  {
-    id: "18c3c71d-9a8d-480a-a25a-bf1f3bacbf5a",
-    code: "WH-MAIN",
-    warehouse_code: "WH-MAIN",
-    name: "Main Warehouse",
-    warehouse_name: "Main Warehouse",
-  },
-];
-
-const devLocations: LocationOption[] = [
-  {
-    id: "1818fce4-36f3-42f1-a95e-d0171ee01ac3",
-    code: "BIN-01",
-    location_code: "BIN-01",
-    name: "BIN-01",
-    location_name: "BIN-01",
-    warehouse_id: "18c3c71d-9a8d-480a-a25a-bf1f3bacbf5a",
-  },
-  {
-    id: "4e2d7d4e-c9b9-4e33-aa79-9634f5e91485",
-    code: "BIN-02",
-    location_code: "BIN-02",
-    name: "BIN-02",
-    location_name: "BIN-02",
-    warehouse_id: "18c3c71d-9a8d-480a-a25a-bf1f3bacbf5a",
-  },
-];
-
-const devItems: ItemOption[] = [
-  {
-    id: "78f96246-f642-4aad-9538-2fe790ec85fd",
-    item_code: "RAW-000001",
-    item_name: "Ayam Fillet",
-    unit_name: "Kg",
-    unit_code: "KG",
-  },
-];
-
-function unwrapApiPayload<T>(payload: unknown): T {
-  if (
-    payload &&
-    typeof payload === "object" &&
-    "data" in payload
-  ) {
-    return (payload as { data: T }).data;
-  }
-
-  return payload as T;
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null;
 }
 
-function normalizeArray<T>(
-  payload: unknown,
-  keys: string[],
-): T[] {
-  const unwrapped = unwrapApiPayload<unknown>(payload);
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim()
+    ? value
+    : null;
+}
 
-  if (Array.isArray(unwrapped)) {
-    return unwrapped as T[];
+function booleanValue(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function extractArray(payload: unknown): UnknownRecord[] {
+  if (Array.isArray(payload)) {
+    return payload.filter(isRecord);
   }
 
-  if (unwrapped && typeof unwrapped === "object") {
-    const value = unwrapped as Record<string, unknown>;
+  if (!isRecord(payload)) {
+    return [];
+  }
 
-    for (const key of keys) {
-      if (Array.isArray(value[key])) {
-        return value[key] as T[];
+  const candidates = [
+    payload.data,
+    payload.items,
+    payload.rows,
+    payload.results,
+    payload.warehouses,
+    payload.locations,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.filter(isRecord);
+    }
+
+    if (isRecord(candidate)) {
+      const nested = extractArray(candidate);
+
+      if (nested.length > 0) {
+        return nested;
       }
-    }
-
-    if (Array.isArray(value.rows)) {
-      return value.rows as T[];
-    }
-
-    if (Array.isArray(value.items)) {
-      return value.items as T[];
     }
   }
 
   return [];
 }
 
-function result<T>(
-  data: T,
-  usingFallback: boolean,
-): MasterDataResult<T> {
+function normalizeWarehouse(row: UnknownRecord): WarehouseOption | null {
+  const id = stringValue(row.id);
+  const code =
+    stringValue(row.warehouse_code) ||
+    stringValue(row.code);
+  const name =
+    stringValue(row.warehouse_name) ||
+    stringValue(row.name);
+
+  if (!id || !code || !name) {
+    return null;
+  }
+
   return {
-    data,
-    usingFallback,
+    id,
+    code,
+    name,
+    address: stringValue(row.address),
+    is_active: booleanValue(row.is_active) ?? true,
   };
 }
 
-async function requestMasterData<T>(
-  endpoint: string,
-  keys: string[],
-): Promise<T[]> {
-  const response = await apiClient.get(endpoint);
+function normalizeLocation(row: UnknownRecord): LocationOption | null {
+  const id = stringValue(row.id);
+  const code =
+    stringValue(row.location_code) ||
+    stringValue(row.code);
+  const name =
+    stringValue(row.location_name) ||
+    stringValue(row.name);
 
-  return normalizeArray<T>(response.data, keys);
+  if (!id || !code || !name) {
+    return null;
+  }
+
+  return {
+    id,
+    code,
+    name,
+    level:
+      stringValue(row.location_type) ||
+      stringValue(row.level),
+    warehouse_id: stringValue(row.warehouse_id),
+    parent_id: stringValue(row.parent_id),
+    is_active: booleanValue(row.is_active) ?? true,
+  };
+}
+
+function normalizeItem(row: UnknownRecord): ItemOption | null {
+  const id = stringValue(row.id);
+  const code =
+    stringValue(row.item_code) ||
+    stringValue(row.code);
+  const name =
+    stringValue(row.item_name) ||
+    stringValue(row.name);
+
+  if (!id || !code || !name) {
+    return null;
+  }
+
+  const unit = isRecord(row.unit) ? row.unit : null;
+
+  return {
+    id,
+    item_code: code,
+    item_name: name,
+    unit_code:
+      stringValue(row.unit_code) ||
+      stringValue(unit?.code),
+    unit_name:
+      stringValue(row.unit_name) ||
+      stringValue(unit?.name),
+    is_active: booleanValue(row.is_active) ?? true,
+  };
 }
 
 export const masterDataService = {
-  async getWarehouses(): Promise<MasterDataResult<WarehouseOption[]>> {
-    if (enableDevFallback) {
-      return result(devWarehouses, true);
-    }
+  async getWarehouses(): Promise<WarehouseOption[]> {
+    const response = await apiClient.get("/warehouses", {
+      params: {
+        limit: 100,
+      },
+    });
 
-    const data = await requestMasterData<WarehouseOption>(
-      "/warehouses",
-      ["warehouses"],
-    );
-
-    return result(data, false);
+    return extractArray(response.data)
+      .map(normalizeWarehouse)
+      .filter(
+        (warehouse): warehouse is WarehouseOption =>
+          warehouse !== null && warehouse.is_active,
+      );
   },
 
-  async getLocations(): Promise<MasterDataResult<LocationOption[]>> {
-    if (enableDevFallback) {
-      return result(devLocations, true);
-    }
+  async getLocations(): Promise<LocationOption[]> {
+    const response = await apiClient.get("/locations", {
+      params: {
+        limit: 100,
+      },
+    });
 
-    const data = await requestMasterData<LocationOption>(
-      "/locations",
-      ["locations"],
-    );
-
-    return result(data, false);
+    return extractArray(response.data)
+      .map(normalizeLocation)
+      .filter(
+        (location): location is LocationOption =>
+          location !== null && location.is_active,
+      );
   },
 
-  async getItems(): Promise<MasterDataResult<ItemOption[]>> {
-    if (enableDevFallback) {
-      return result(devItems, true);
-    }
+  async getItems(): Promise<ItemOption[]> {
+    const response = await apiClient.get("/items", {
+      params: {
+        page: 1,
+        limit: 100,
+      },
+    });
 
-    const data = await requestMasterData<ItemOption>(
-      "/items",
-      ["items"],
-    );
-
-    return result(data, false);
+    return extractArray(response.data)
+      .map(normalizeItem)
+      .filter(
+        (item): item is ItemOption =>
+          item !== null && item.is_active,
+      );
   },
 };

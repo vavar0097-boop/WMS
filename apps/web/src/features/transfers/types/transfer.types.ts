@@ -15,28 +15,29 @@ export type TransferAction =
 
 export type WarehouseOption = {
   id: string;
-  code?: string | null;
-  warehouse_code?: string | null;
-  name?: string | null;
-  warehouse_name?: string | null;
+  code: string;
+  name: string;
+  address: string | null;
+  is_active: boolean;
 };
 
 export type LocationOption = {
   id: string;
-  code?: string | null;
-  location_code?: string | null;
-  name?: string | null;
-  location_name?: string | null;
-  warehouse_id?: string | null;
+  code: string;
+  name: string;
+  level: string | null;
+  warehouse_id: string | null;
+  parent_id: string | null;
+  is_active: boolean;
 };
 
 export type ItemOption = {
   id: string;
-  item_code?: string | null;
-  item_name?: string | null;
-  name?: string | null;
-  unit_name?: string | null;
-  unit_code?: string | null;
+  item_code: string;
+  item_name: string;
+  unit_name: string | null;
+  unit_code: string | null;
+  is_active: boolean;
 };
 
 export type TransferItem = {
@@ -116,9 +117,4 @@ export type CreateTransferPayload = {
   destination_location_id: string;
   remarks?: string;
   items: CreateTransferItemPayload[];
-};
-
-export type MasterDataResult<T> = {
-  data: T;
-  usingFallback: boolean;
 };
