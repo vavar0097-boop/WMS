@@ -5,8 +5,9 @@ import {
   Routes,
 } from "react-router-dom";
 
-import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
+import { LoginPage } from "@/features/auth/pages/LoginPage";
+import { StockPage } from "@/features/stocks/pages/StockPage";
 import { CreateTransferPage } from "@/features/transfers/pages/CreateTransferPage";
 import { TransferDetailPage } from "@/features/transfers/pages/TransferDetailPage";
 import { TransferListPage } from "@/features/transfers/pages/TransferListPage";
@@ -17,18 +18,12 @@ export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/login"
-          element={<LoginPage />}
-        />
+        <Route path="/login" element={<LoginPage />} />
 
         <Route
           path="/"
           element={
-            <Navigate
-              to="/dashboard/transfers"
-              replace
-            />
+            <Navigate to="/dashboard/transfers" replace />
           }
         />
 
@@ -54,16 +49,15 @@ export function App() {
             path="transfers"
             element={<TransferListPage />}
           />
-
           <Route
             path="transfers/new"
             element={<CreateTransferPage />}
           />
-
           <Route
             path="transfers/:id"
             element={<TransferDetailPage />}
           />
+          <Route path="stock" element={<StockPage />} />
         </Route>
 
         <Route

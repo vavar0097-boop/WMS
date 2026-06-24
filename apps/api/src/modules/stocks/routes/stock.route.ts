@@ -1,52 +1,34 @@
 import { Router } from "express";
 
-import {
-  authMiddleware,
-} from "../../../middleware/auth.middleware";
-
-import {
-  StockController,
-} from "../controllers/stock.controller";
-
-import {
-  asyncHandler,
-} from "../../../utils/async-handler";
+import { authMiddleware } from "../../../middleware/auth.middleware";
+import { asyncHandler } from "../../../utils/async-handler";
+import { StockController } from "../controllers/stock.controller";
 
 const router = Router();
-
-const controller =
-  new StockController();
+const controller = new StockController();
 
 router.get(
   "/current",
   authMiddleware,
-  controller.getCurrentStocks
+  asyncHandler(controller.getCurrentStocks),
 );
 
 router.get(
   "/ledgers",
   authMiddleware,
-  controller.getLedgers
+  asyncHandler(controller.getLedgers),
 );
 
 router.post(
   "/initial",
   authMiddleware,
-  controller.createInitialStock
+  asyncHandler(controller.createInitialStock),
 );
 
 router.post(
   "/adjustment",
   authMiddleware,
-  controller.createAdjustment
-);
-
-router.post(
-  "/adjustment",
-  authMiddleware,
-  asyncHandler(
-    controller.createAdjustment
-  )
+  asyncHandler(controller.createAdjustment),
 );
 
 export default router;

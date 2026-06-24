@@ -36,7 +36,6 @@ const sidebarItems: SidebarItem[] = [
     label: "Stock",
     href: "/dashboard/stock",
     icon: Boxes,
-    disabled: true,
   },
   {
     label: "Items",
