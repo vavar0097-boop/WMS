@@ -1,15 +1,6 @@
 import bcrypt from "bcryptjs";
 
-import { createClient } from "@supabase/supabase-js";
-
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const supabase = createClient(
-process.env.SUPABASE_URL!,
-process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { db } from "../src/database/client";
 
 async function main() {
 
@@ -20,14 +11,19 @@ await bcrypt.hash(
 );
 
 const { data, error } =
-await supabase
+await db
 .from("users")
-.insert({
+.upsert({
 username: "admin",
 full_name: "System Administrator",
 password_hash: passwordHash,
+is_active: true,
+is_deleted: false,
+deleted_at: null,
+}, {
+onConflict: "username",
 })
-.select()
+.select("id, username")
 .single();
 
 if (error) {
@@ -35,8 +31,38 @@ console.error(error);
 process.exit(1);
 }
 
+const { data: role, error: roleError } =
+await db
+.from("roles")
+.select("id")
+.eq("name", "ADMIN")
+.maybeSingle();
+
+if (roleError) {
+console.error(roleError);
+process.exit(1);
+}
+
+if (role) {
+const { error: userRoleError } =
+await db
+.from("user_roles")
+.upsert({
+user_id: data.id,
+role_id: role.id,
+}, {
+onConflict: "user_id,role_id",
+})
+;
+
+if (userRoleError) {
+console.error(userRoleError);
+process.exit(1);
+}
+}
+
 console.log(
-"Admin created:",
+"Admin ready:",
 data
 );
 

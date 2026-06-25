@@ -11,6 +11,26 @@ import { UnauthorizedError }
 import { AuthRepository }
   from "../repositories/auth.repository";
 
+type UserRoleRow = {
+  roles?: {
+    name?: string | null;
+  } | {
+    name?: string | null;
+  }[] | null;
+};
+
+function getRoleName(
+  userRoles: UserRoleRow[] | null | undefined
+) {
+  const role = userRoles?.[0]?.roles;
+
+  if (Array.isArray(role)) {
+    return role[0]?.name ?? "OPERATOR";
+  }
+
+  return role?.name ?? "OPERATOR";
+}
+
 export class AuthService {
 
   private repository =
@@ -48,7 +68,7 @@ export class AuthService {
         {
           sub: user.id,
           username: user.username,
-          role: user.role_name ?? "OPERATOR",
+          role: getRoleName(user.user_roles),
         },
         env.JWT_ACCESS_SECRET,
         {
@@ -68,7 +88,12 @@ export class AuthService {
       );
 
     return {
-      user,
+      user: {
+        id: user.id,
+        username: user.username,
+        full_name: user.full_name,
+        role: getRoleName(user.user_roles),
+      },
       accessToken,
       refreshToken,
     };

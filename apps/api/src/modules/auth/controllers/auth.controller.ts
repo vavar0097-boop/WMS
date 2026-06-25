@@ -60,11 +60,7 @@ export class AuthController {
 
     return successResponse(
       res,
-      {
-        id: result.user.id,
-        username:
-          result.user.username,
-      },
+      result.user,
       "Login successful"
     );
   };
