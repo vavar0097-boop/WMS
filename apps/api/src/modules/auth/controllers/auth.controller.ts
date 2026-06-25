@@ -1,42 +1,32 @@
-import { Request, Response }
-  from "express";
-
-import { AuthService }
-  from "../services/auth.service";
-  import {
-AuthRequest,
-} from "../../../middleware/auth.middleware";
-
-
+import { Request, Response } from "express";
 
 import {
-  successResponse,
-} from "../../../utils/response";
-
+  AuthRequest,
+} from "../../../middleware/auth.middleware";
 import {
   UnauthorizedError,
 } from "../../../utils/errors";
+import {
+  successResponse,
+} from "../../../utils/response";
+import { AuthService } from "../services/auth.service";
 
 export class AuthController {
-
-  private service =
-    new AuthService();
+  private service = new AuthService();
 
   login = async (
     req: Request,
     res: Response
   ) => {
-
     const {
       username,
       password,
     } = req.body;
 
-    const result =
-      await this.service.login({
-        username,
-        password,
-  });
+    const result = await this.service.login({
+      username,
+      password,
+    });
 
     res.cookie(
       "access_token",
@@ -69,72 +59,56 @@ export class AuthController {
     req: AuthRequest,
     res: Response
   ) => {
+    return successResponse(
+      res,
+      req.user,
+      "Current User"
+    );
+  };
+
+  logout = async (
+    _req: Request,
+    res: Response
+  ) => {
+    res.clearCookie("access_token");
+    res.clearCookie("refresh_token");
 
     return successResponse(
-    res,
-    req.user,
-    "Current User"
-  );
+      res,
+      null,
+      "Logout successful"
+    );
+  };
 
-};
+  refresh = async (
+    req: Request,
+    res: Response
+  ) => {
+    const refreshToken = req.cookies.refresh_token;
 
-logout = async (
-_req: Request,
-res: Response
-) => {
+    if (!refreshToken) {
+      throw new UnauthorizedError(
+        "Refresh token missing"
+      );
+    }
 
-res.clearCookie(
-"access_token"
-);
+    const accessToken =
+      this.service.refresh(refreshToken);
 
-res.clearCookie(
-"refresh_token"
-);
+    res.cookie(
+      "access_token",
+      accessToken,
+      {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: false,
+      }
+    );
 
-return successResponse(
-res,
-null,
-"Logout successful"
-);
-
-};
-
-refresh = async (
-req: Request,
-res: Response
-) => {
-
-const refreshToken =
-req.cookies.refresh_token;
-
-if (!refreshToken) {
-throw new UnauthorizedError(
-"Refresh token missing"
-);
-}
-
-const accessToken =
-this.service.refresh(
-refreshToken
-);
-
-res.cookie(
-"access_token",
-accessToken,
-{
-httpOnly: true,
-sameSite: "lax",
-secure: false,
-}
-);
-
-return successResponse(
-res,
-null,
-"Token refreshed"
-);
-
-};
-
-
+    return successResponse(
+      res,
+      null,
+      "Token refreshed"
+    );
+  };
 }

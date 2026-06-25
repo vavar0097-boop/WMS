@@ -2,26 +2,22 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import { env } from "../../../config/env";
-
+import { UnauthorizedError } from "../../../utils/errors";
 import { LoginDto } from "../dto/login.dto";
-
-import { UnauthorizedError }
-  from "../../../utils/errors";
-
-import { AuthRepository }
-  from "../repositories/auth.repository";
+import { AuthRepository } from "../repositories/auth.repository";
 
 type UserRoleRow = {
-  roles?: {
-    name?: string | null;
-  } | {
-    name?: string | null;
-  }[] | null;
+  roles?:
+    | {
+        name?: string | null;
+      }
+    | {
+        name?: string | null;
+      }[]
+    | null;
 };
 
-function getRoleName(
-  userRoles: UserRoleRow[] | null | undefined
-) {
+function getRoleName(userRoles: UserRoleRow[] | null | undefined) {
   const role = userRoles?.[0]?.roles;
 
   if (Array.isArray(role)) {
@@ -32,60 +28,45 @@ function getRoleName(
 }
 
 export class AuthService {
+  private repository = new AuthRepository();
 
-  private repository =
-    new AuthRepository();
-
-  async login(
-    { username, password }: LoginDto
-  ) {
-
-    const user =
-      await this.repository.findByUsername(
-        username
-      );
+  async login({ username, password }: LoginDto) {
+    const user = await this.repository.findByUsername(username);
 
     if (!user) {
-      throw new UnauthorizedError(
-        "Invalid credentials"
-      );
+      throw new UnauthorizedError("Invalid credentials");
     }
 
-    const valid =
-      await bcrypt.compare(
-        password,
-        user.password_hash
-      );
+    const valid = await bcrypt.compare(
+      password,
+      user.password_hash
+    );
 
     if (!valid) {
-      throw new UnauthorizedError(
-        "Invalid credentials"
-      );
+      throw new UnauthorizedError("Invalid credentials");
     }
 
-    const accessToken =
-      jwt.sign(
-        {
-          sub: user.id,
-          username: user.username,
-          role: getRoleName(user.user_roles),
-        },
-        env.JWT_ACCESS_SECRET,
-        {
-          expiresIn: "15m",
-        }
-      );
+    const accessToken = jwt.sign(
+      {
+        sub: user.id,
+        username: user.username,
+        role: getRoleName(user.user_roles),
+      },
+      env.JWT_ACCESS_SECRET,
+      {
+        expiresIn: "15m",
+      }
+    );
 
-    const refreshToken =
-      jwt.sign(
-        {
-          sub: user.id,
-        },
-        env.JWT_REFRESH_SECRET,
-        {
-          expiresIn: "7d",
-        }
-      );
+    const refreshToken = jwt.sign(
+      {
+        sub: user.id,
+      },
+      env.JWT_REFRESH_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
 
     return {
       user: {
@@ -99,27 +80,22 @@ export class AuthService {
     };
   }
 
-  refresh(
-refreshToken: string
-) {
+  refresh(refreshToken: string) {
+    const payload = jwt.verify(
+      refreshToken,
+      env.JWT_REFRESH_SECRET
+    ) as {
+      sub: string;
+    };
 
-const payload =
-jwt.verify(
-refreshToken,
-env.JWT_REFRESH_SECRET
-) as {
-sub: string;
-};
-
-return jwt.sign(
-{
-sub: payload.sub,
-},
-env.JWT_ACCESS_SECRET,
-{
-expiresIn: "15m",
-}
-);
-}
-
+    return jwt.sign(
+      {
+        sub: payload.sub,
+      },
+      env.JWT_ACCESS_SECRET,
+      {
+        expiresIn: "15m",
+      }
+    );
+  }
 }
