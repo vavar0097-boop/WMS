@@ -1,36 +1,40 @@
-import { Response, NextFunction } from "express";
-
-import { AuthRequest } from "./auth.middleware";
+import { NextFunction, Response } from "express";
 
 import {
-ForbiddenError,
-} from "../utils/errors";
+  Permission,
+  roleHasPermission,
+} from "../config/permissions";
+import { ForbiddenError } from "../utils/errors";
+import { AuthRequest } from "./auth.middleware";
 
-export function roleMiddleware(
-...allowedRoles: string[]
-) {
+export function roleMiddleware(...allowedRoles: string[]) {
+  return (
+    req: AuthRequest,
+    _res: Response,
+    next: NextFunction,
+  ) => {
+    const role = req.user?.role;
 
-return (
-req: AuthRequest,
-_res: Response,
-next: NextFunction
-) => {
+    if (!role || !allowedRoles.includes(role)) {
+      throw new ForbiddenError("Access denied");
+    }
 
-
-const role =
-  (req.user as any)?.role;
-
-if (
-  !role ||
-  !allowedRoles.includes(role)
-) {
-  throw new ForbiddenError(
-    "Access denied"
-  );
+    next();
+  };
 }
 
-next();
+export function permissionMiddleware(permission: Permission) {
+  return (
+    req: AuthRequest,
+    _res: Response,
+    next: NextFunction,
+  ) => {
+    const role = req.user?.role;
 
+    if (!role || !roleHasPermission(role, permission)) {
+      throw new ForbiddenError("Access denied");
+    }
 
-};
+    next();
+  };
 }

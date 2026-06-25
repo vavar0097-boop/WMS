@@ -202,6 +202,48 @@ async function migrate() {
   }
 }
 
+async function applyOne(name: string | undefined) {
+  if (!name) {
+    throw new Error("Missing migration file name.");
+  }
+
+  const migration = getMigrations().find(
+    (candidate) => candidate.name === name
+  );
+
+  if (!migration) {
+    throw new Error(`Migration "${name}" not found.`);
+  }
+
+  const client = getClient();
+
+  await client.connect();
+
+  try {
+    const applied = await getAppliedMigrations(client);
+
+    if (applied.has(migration.name)) {
+      console.log(`skip     ${migration.name}`);
+      return;
+    }
+
+    const sql = fs.readFileSync(migration.path, "utf8");
+
+    console.log(`apply    ${migration.name}`);
+    await client.query(sql);
+    await client.query(
+      `
+        INSERT INTO schema_migrations (name)
+        VALUES ($1)
+      `,
+      [migration.name]
+    );
+    console.log("Database migration complete.");
+  } finally {
+    await client.end();
+  }
+}
+
 async function main() {
   const command = process.argv[2] ?? "status";
 
@@ -220,8 +262,13 @@ async function main() {
     return;
   }
 
+  if (command === "apply") {
+    await applyOne(process.argv[3]);
+    return;
+  }
+
   throw new Error(
-    `Unknown command "${command}". Use status, baseline, or migrate.`
+    `Unknown command "${command}". Use status, baseline, migrate, or apply.`
   );
 }
 

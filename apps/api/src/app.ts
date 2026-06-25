@@ -8,7 +8,9 @@ import morgan from "morgan";
 import { logger } from "./config/logger";
 import { errorMiddleware } from "./middleware/error.middleware";
 import itemRoutes from "./modules/items/routes/item.route";
+import financeRoutes from "./modules/finance/finance.routes";
 import locationRoutes from "./modules/locations/location.routes";
+import settingsRoutes from "./modules/settings/settings.routes";
 import stockRoutes from "./modules/stocks/routes/stock.route";
 import transferRoutes from "./modules/transfers/routes/transfer.route";
 import unitRoutes from "./modules/units/unit.routes";
@@ -49,12 +51,14 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/items", itemRoutes);
+app.use("/api/finance", financeRoutes);
 app.use("/api/stocks", stockRoutes);
 app.use("/api/transfers", transferRoutes);
 app.use("/api/warehouses", warehouseRoutes);
 app.use("/api/locations", locationRoutes);
 app.use("/api/units", unitRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Error middleware wajib dipasang setelah seluruh route.
 app.use(errorMiddleware);

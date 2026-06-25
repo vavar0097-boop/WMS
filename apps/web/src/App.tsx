@@ -6,12 +6,15 @@ import {
 } from "react-router-dom";
 
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
+import { FinancePage } from "@/features/finance/pages/FinancePage";
+import { PermissionRoute } from "@/features/auth/components/PermissionRoute";
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { ItemsPage } from "@/features/master-data/pages/ItemsPage";
 import { LocationsPage } from "@/features/master-data/pages/LocationsPage";
 import { WarehousesPage } from "@/features/master-data/pages/WarehousesPage";
 import { StockPage } from "@/features/stocks/pages/StockPage";
+import { GlobalSettingsPage } from "@/features/settings/pages/GlobalSettingsPage";
 import { AuditLogsPage } from "@/features/system/pages/AuditLogsPage";
 import { UsersPage } from "@/features/system/pages/UsersPage";
 import { CreateTransferPage } from "@/features/transfers/pages/CreateTransferPage";
@@ -19,6 +22,7 @@ import { TransferDetailPage } from "@/features/transfers/pages/TransferDetailPag
 import { TransferListPage } from "@/features/transfers/pages/TransferListPage";
 import { DashboardLayout } from "@/shared/layout/DashboardLayout";
 import { Toaster } from "@/shared/ui/toast";
+import { PERMISSIONS } from "@/shared/auth/permissions";
 
 export function App() {
   return (
@@ -43,35 +47,124 @@ export function App() {
           >
             <Route
               index
-              element={<DashboardPage />}
+              element={
+                <PermissionRoute
+                  permission={PERMISSIONS.DASHBOARD_VIEW}
+                >
+                  <DashboardPage />
+                </PermissionRoute>
+              }
             />
 
           <Route
             path="transfers"
-            element={<TransferListPage />}
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.TRANSFERS_READ}
+              >
+                <TransferListPage />
+              </PermissionRoute>
+            }
           />
           <Route
             path="transfers/new"
-            element={<CreateTransferPage />}
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.TRANSFERS_WRITE}
+              >
+                <CreateTransferPage />
+              </PermissionRoute>
+            }
           />
           <Route
             path="transfers/:id"
-            element={<TransferDetailPage />}
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.TRANSFERS_READ}
+              >
+                <TransferDetailPage />
+              </PermissionRoute>
+            }
           />
-          <Route path="stock" element={<StockPage />} />
-          <Route path="items" element={<ItemsPage />} />
+          <Route
+            path="stock"
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.STOCK_READ}
+              >
+                <StockPage />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="finance"
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.FINANCE_READ}
+              >
+                <FinancePage />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="items"
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.ITEMS_READ}
+              >
+                <ItemsPage />
+              </PermissionRoute>
+            }
+          />
           <Route
             path="warehouses"
-            element={<WarehousesPage />}
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.WAREHOUSES_READ}
+              >
+                <WarehousesPage />
+              </PermissionRoute>
+            }
           />
           <Route
             path="locations"
-            element={<LocationsPage />}
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.LOCATIONS_READ}
+              >
+                <LocationsPage />
+              </PermissionRoute>
+            }
           />
-          <Route path="users" element={<UsersPage />} />
+          <Route
+            path="users"
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.USERS_READ}
+              >
+                <UsersPage />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.SETTINGS_READ}
+              >
+                <GlobalSettingsPage />
+              </PermissionRoute>
+            }
+          />
           <Route
             path="audit-logs"
-            element={<AuditLogsPage />}
+            element={
+              <PermissionRoute
+                permission={PERMISSIONS.AUDIT_READ}
+              >
+                <AuditLogsPage />
+              </PermissionRoute>
+            }
           />
         </Route>
 

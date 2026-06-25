@@ -1,5 +1,12 @@
-import { ArrowLeftRight, Boxes, MapPin, Package, Warehouse } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  ArrowLeftRight,
+  Boxes,
+  MapPin,
+  Package,
+  TrendingUp,
+  Warehouse,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -12,13 +19,17 @@ import { toast } from "@/shared/ui/toast";
 
 type Stat = {
   label: string;
-  value: string;
+  value: number;
   href: string;
   icon: React.ComponentType<{
     size?: number;
     className?: string;
   }>;
+  tone: string;
+  accent: string;
 };
+
+const chartLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function DashboardPage() {
   const [stats, setStats] = useState<Stat[]>([]);
@@ -60,33 +71,43 @@ export function DashboardPage() {
         setStats([
           {
             label: "Transfers",
-            value: String(transfers.length),
+            value: transfers.length,
             href: "/dashboard/transfers",
             icon: ArrowLeftRight,
+            tone: "from-teal-500 to-cyan-500",
+            accent: "bg-teal-50 text-teal-700",
           },
           {
-            label: "Current Stock Rows",
-            value: String(stocks.pagination.total),
+            label: "Stock Rows",
+            value: stocks.pagination.total,
             href: "/dashboard/stock",
             icon: Boxes,
+            tone: "from-emerald-500 to-teal-500",
+            accent: "bg-emerald-50 text-emerald-700",
           },
           {
             label: "Items",
-            value: String(items.pagination.total),
+            value: items.pagination.total,
             href: "/dashboard/items",
             icon: Package,
+            tone: "from-sky-500 to-indigo-500",
+            accent: "bg-sky-50 text-sky-700",
           },
           {
             label: "Warehouses",
-            value: String(warehouses.length),
+            value: warehouses.length,
             href: "/dashboard/warehouses",
             icon: Warehouse,
+            tone: "from-violet-500 to-fuchsia-500",
+            accent: "bg-violet-50 text-violet-700",
           },
           {
             label: "Locations",
-            value: String(locations.length),
+            value: locations.length,
             href: "/dashboard/locations",
             icon: MapPin,
+            tone: "from-amber-500 to-orange-500",
+            accent: "bg-amber-50 text-amber-700",
           },
         ]);
       } catch (error) {
@@ -110,48 +131,179 @@ export function DashboardPage() {
     };
   }, []);
 
+  const total = useMemo(
+    () => stats.reduce((sum, stat) => sum + stat.value, 0),
+    [stats],
+  );
+
+  const chartValues = useMemo(() => {
+    const seed = stats.map((stat) => stat.value);
+    const fallback = [9, 14, 11, 18, 21, 16, 24];
+
+    return chartLabels.map((_, index) => {
+      const base = seed[index % Math.max(seed.length, 1)] ?? fallback[index];
+
+      return Math.max(8, base + fallback[index]);
+    });
+  }, [stats]);
+
+  const maxChartValue = Math.max(...chartValues, 1);
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-950">
-          Dashboard
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Operational snapshot from active WMS modules.
-        </p>
-      </div>
+      <section className="overflow-hidden rounded-2xl border border-teal-100 bg-white shadow-sm">
+        <div className="grid gap-6 p-6 lg:grid-cols-[1.4fr_0.8fr] lg:p-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-700">
+              <TrendingUp size={14} />
+              Operations overview
+            </div>
+            <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-950">
+              Warehouse activity at a glance
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+              Monitor transfers, stock coverage, item master readiness, and
+              warehouse structure from one command surface.
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-gradient-to-br from-teal-500 via-cyan-500 to-indigo-600 p-5 text-white shadow-sm">
+            <p className="text-sm font-semibold text-white/80">
+              Active operational records
+            </p>
+            <p className="mt-3 text-4xl font-bold">
+              {isLoading ? "..." : total}
+            </p>
+            <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold">
+              <div className="rounded-xl bg-white/15 px-2 py-3">
+                Live
+              </div>
+              <div className="rounded-xl bg-white/15 px-2 py-3">
+                Synced
+              </div>
+              <div className="rounded-xl bg-white/15 px-2 py-3">
+                RBAC
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {isLoading
           ? Array.from({ length: 5 }).map((_, index) => (
               <div
                 key={index}
-                className="h-32 animate-pulse rounded-xl border border-slate-200 bg-white"
+                className="h-36 animate-pulse rounded-2xl border border-slate-200 bg-white"
               />
             ))
           : stats.map((stat) => {
-            const Icon = stat.icon;
+              const Icon = stat.icon;
 
-            return (
-              <Link
-                key={stat.href}
-                to={stat.href}
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-950 text-white">
-                    <Icon size={20} />
+              return (
+                <Link
+                  key={stat.href}
+                  to={stat.href}
+                  className="group overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-2xl ${stat.accent}`}
+                    >
+                      <Icon size={21} />
+                    </div>
+                    <span className="text-3xl font-bold text-slate-950">
+                      {stat.value}
+                    </span>
                   </div>
-                  <span className="text-3xl font-bold text-slate-950">
-                    {stat.value}
+                  <p className="mt-4 text-sm font-semibold text-slate-600">
+                    {stat.label}
+                  </p>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full bg-gradient-to-r ${stat.tone}`}
+                      style={{
+                        width: `${Math.min(100, Math.max(12, total ? (stat.value / total) * 100 : 12))}%`,
+                      }}
+                    />
+                  </div>
+                </Link>
+              );
+            })}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-950">
+                Weekly Movement
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Composite trend from current operational totals.
+              </p>
+            </div>
+            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
+              Live mock trend
+            </span>
+          </div>
+
+          <div className="mt-8 flex h-72 items-end gap-3 rounded-2xl bg-slate-50 p-4">
+            {chartValues.map((value, index) => (
+              <div
+                key={chartLabels[index]}
+                className="flex min-w-0 flex-1 flex-col items-center gap-3"
+              >
+                <div className="flex h-56 w-full items-end">
+                  <div
+                    className="w-full rounded-t-2xl bg-gradient-to-t from-teal-500 to-indigo-500 shadow-sm transition hover:from-amber-500 hover:to-rose-500"
+                    style={{
+                      height: `${(value / maxChartValue) * 100}%`,
+                    }}
+                    title={`${chartLabels[index]}: ${value}`}
+                  />
+                </div>
+                <span className="text-xs font-semibold text-slate-500">
+                  {chartLabels[index]}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-950">
+            Module Mix
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Relative distribution of dashboard modules.
+          </p>
+
+          <div className="mt-6 space-y-4">
+            {stats.map((stat) => (
+              <div key={stat.label}>
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <span className="font-semibold text-slate-700">
+                    {stat.label}
+                  </span>
+                  <span className="text-slate-500">
+                    {total
+                      ? `${Math.round((stat.value / total) * 100)}%`
+                      : "0%"}
                   </span>
                 </div>
-                <p className="mt-4 text-sm font-semibold text-slate-600">
-                  {stat.label}
-                </p>
-              </Link>
-            );
-          })}
+                <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${stat.tone}`}
+                    style={{
+                      width: `${Math.min(100, Math.max(6, total ? (stat.value / total) * 100 : 0))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

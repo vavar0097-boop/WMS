@@ -14,6 +14,7 @@
     "db:status": "npm run db:status --workspace apps/api",
     "db:baseline": "npm run db:baseline --workspace apps/api",
     "db:migrate": "npm run db:migrate --workspace apps/api",
+    "db:apply": "npm run db:apply --workspace apps/api --",
     "create-admin": "npm run create-admin --workspace apps/api"
   }
 }

@@ -14,7 +14,8 @@
     "create-admin": "tsx scripts/create-admin.ts",
     "db:status": "tsx scripts/db.ts status",
     "db:baseline": "tsx scripts/db.ts baseline",
-    "db:migrate": "tsx scripts/db.ts migrate"
+    "db:migrate": "tsx scripts/db.ts migrate",
+    "db:apply": "tsx scripts/db.ts apply"
   },
   "keywords": [],
   "author": "",

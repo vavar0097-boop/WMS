@@ -1,4 +1,4 @@
-import { LogOut, Menu } from "lucide-react";
+import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { toast } from "@/shared/ui/toast";
@@ -41,12 +41,12 @@ export function AppHeader({ onOpenMenu }: AppHeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/85 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between gap-4 px-4 lg:px-8">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-teal-100 bg-teal-50 text-teal-700 transition hover:bg-teal-100 lg:hidden"
             onClick={onOpenMenu}
             aria-label="Open navigation"
           >
@@ -57,15 +57,28 @@ export function AppHeader({ onOpenMenu }: AppHeaderProps) {
             <p className="text-sm font-semibold text-slate-950">
               WMS Dashboard
             </p>
-            <p className="text-xs text-slate-500">
-              Transfer control panel
+            <p className="text-xs text-teal-700">
+              Live warehouse operations
             </p>
           </div>
         </div>
 
-        <div className="hidden flex-1 md:block" />
+        <div className="hidden flex-1 justify-center md:flex">
+          <div className="flex h-10 w-full max-w-md items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">
+            <Search size={16} />
+            <span>Search modules, stock, transfers</span>
+          </div>
+        </div>
 
         <div className="flex shrink-0 items-center gap-3">
+          <button
+            type="button"
+            className="hidden h-10 w-10 items-center justify-center rounded-xl border border-amber-100 bg-amber-50 text-amber-700 transition hover:bg-amber-100 sm:inline-flex"
+            aria-label="Notifications"
+          >
+            <Bell size={17} />
+          </button>
+
           <div className="hidden text-right md:block">
             <p className="text-sm font-semibold text-slate-950">
               {displayName}
@@ -75,7 +88,7 @@ export function AppHeader({ onOpenMenu }: AppHeaderProps) {
             </p>
           </div>
 
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-sm font-semibold uppercase text-white">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-indigo-600 text-sm font-semibold uppercase text-white shadow-sm">
             {displayName.slice(0, 1)}
           </div>
 
@@ -83,7 +96,7 @@ export function AppHeader({ onOpenMenu }: AppHeaderProps) {
             type="button"
             disabled={isLoggingOut}
             onClick={handleLogout}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-100 bg-rose-50 px-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4"
           >
             <LogOut size={16} />
             <span className="hidden sm:inline">

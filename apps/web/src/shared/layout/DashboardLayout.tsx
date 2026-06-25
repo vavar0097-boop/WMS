@@ -8,7 +8,7 @@ export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
+    <div className="min-h-screen bg-[#f5f7fb] text-slate-950">
       <div className="flex min-h-screen">
         <AppSidebar
           open={sidebarOpen}
