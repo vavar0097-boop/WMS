@@ -1,4 +1,7 @@
 import {
+  Camera,
+  Check,
+  FileSpreadsheet,
   Pencil,
   Plus,
   RefreshCw,
@@ -16,7 +19,10 @@ import {
   FinanceSummary,
   FinanceTransaction,
   CashierSettlement,
+  DailyPurchase,
+  DailyPurchaseItem,
   PosSaleFinanceRow,
+  MonthlyReport,
   financeService,
 } from "../services/finance.service";
 
@@ -29,6 +35,16 @@ type FinanceForm = {
   payment_method: string;
 };
 
+type PurchaseForm = {
+  id?: string;
+  purchase_date: string;
+  vendor_name: string;
+  receipt_photo_url: string;
+  raw_text: string;
+  ai_provider: string;
+  ai_json_result: Record<string, unknown> | null;
+};
+
 const today = new Date().toISOString().slice(0, 10);
 
 const emptyForm: FinanceForm = {
@@ -38,6 +54,15 @@ const emptyForm: FinanceForm = {
   description: "",
   amount: "",
   payment_method: "",
+};
+
+const emptyPurchaseForm: PurchaseForm = {
+  purchase_date: today,
+  vendor_name: "",
+  receipt_photo_url: "",
+  raw_text: "",
+  ai_provider: "",
+  ai_json_result: null,
 };
 
 function money(value: number | string) {
@@ -63,6 +88,7 @@ export function FinancePage() {
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [settlements, setSettlements] = useState<CashierSettlement[]>([]);
   const [posSales, setPosSales] = useState<PosSaleFinanceRow[]>([]);
+  const [dailyPurchases, setDailyPurchases] = useState<DailyPurchase[]>([]);
   const [summary, setSummary] = useState<FinanceSummary>({
     income: 0,
     expense: 0,
@@ -78,6 +104,15 @@ export function FinancePage() {
   const [form, setForm] = useState<FinanceForm>(emptyForm);
   const [modalOpen, setModalOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [purchaseForm, setPurchaseForm] =
+    useState<PurchaseForm>(emptyPurchaseForm);
+  const [purchaseItems, setPurchaseItems] = useState<DailyPurchaseItem[]>([]);
+  const [isParsingPurchase, setIsParsingPurchase] = useState(false);
+  const [isSavingPurchase, setIsSavingPurchase] = useState(false);
+  const [reportMonth, setReportMonth] = useState(today.slice(0, 7));
+  const [syncGoogle, setSyncGoogle] = useState(false);
+  const [report, setReport] = useState<MonthlyReport | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -86,7 +121,13 @@ export function FinancePage() {
       setIsLoading(true);
 
       try {
-        const [rows, nextSummary, nextSettlements, nextPosSales] =
+        const [
+          rows,
+          nextSummary,
+          nextSettlements,
+          nextPosSales,
+          nextDailyPurchases,
+        ] =
           await Promise.all([
           financeService.getTransactions({
             limit: 100,
@@ -100,6 +141,9 @@ export function FinancePage() {
           financeService.getPosSales({
             limit: 20,
           }),
+          financeService.getDailyPurchases({
+            limit: 20,
+          }),
         ]);
 
         if (!mounted) return;
@@ -108,6 +152,7 @@ export function FinancePage() {
         setSummary(nextSummary);
         setSettlements(nextSettlements);
         setPosSales(nextPosSales);
+        setDailyPurchases(nextDailyPurchases);
       } catch (error) {
         if (!mounted) return;
 
@@ -224,6 +269,171 @@ export function FinancePage() {
     }
   }
 
+  function purchaseTotal(items = purchaseItems) {
+    return items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
+  }
+
+  function updatePurchaseItem(
+    index: number,
+    patch: Partial<DailyPurchaseItem>,
+  ) {
+    setPurchaseItems((current) =>
+      current.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+
+        const next = {
+          ...item,
+          ...patch,
+          is_edited: true,
+        };
+        const qty = Number(next.qty || 1) || 1;
+        const unitPrice = Number(next.unit_price || 0);
+
+        return {
+          ...next,
+          subtotal:
+            patch.subtotal !== undefined
+              ? Number(patch.subtotal)
+              : qty * unitPrice,
+        };
+      }),
+    );
+  }
+
+  async function handleReceiptFile(file?: File | null) {
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setPurchaseForm((current) => ({
+        ...current,
+        receipt_photo_url: String(reader.result || ""),
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  async function handleParsePurchase() {
+    if (!purchaseForm.raw_text.trim()) {
+      toast.error("Purchase note required", "Input OCR/manual text first.");
+      return;
+    }
+
+    setIsParsingPurchase(true);
+
+    try {
+      const parsed = await financeService.parseDailyPurchase(
+        purchaseForm.raw_text,
+      );
+
+      setPurchaseForm((current) => ({
+        ...current,
+        purchase_date:
+          parsed.result.purchase_date || current.purchase_date,
+        vendor_name:
+          parsed.result.vendor_name || current.vendor_name,
+        ai_provider: parsed.provider,
+        ai_json_result: parsed.result as unknown as Record<string, unknown>,
+      }));
+      setPurchaseItems(
+        parsed.result.items.map((item) => ({
+          ...item,
+          ai_original_value: item as unknown as Record<string, unknown>,
+          is_edited: false,
+        })),
+      );
+      toast.success("Purchase parsed", parsed.provider);
+    } catch (error) {
+      toast.error("AI parse failed", getApiErrorMessage(error));
+    } finally {
+      setIsParsingPurchase(false);
+    }
+  }
+
+  async function handleSavePurchase() {
+    if (purchaseItems.length === 0) {
+      toast.error("No purchase items", "Parse or add items first.");
+      return;
+    }
+
+    setIsSavingPurchase(true);
+
+    try {
+      const payload = {
+        purchase_date: purchaseForm.purchase_date,
+        vendor_name: purchaseForm.vendor_name || null,
+        receipt_photo_url: purchaseForm.receipt_photo_url || null,
+        ai_raw_text: purchaseForm.raw_text || null,
+        ai_json_result: purchaseForm.ai_json_result,
+        ai_provider: purchaseForm.ai_provider || "manual",
+        status: "NEEDS_REVIEW" as const,
+        total_amount: purchaseTotal(),
+        items: purchaseItems,
+      };
+
+      if (purchaseForm.id) {
+        await financeService.updateDailyPurchase(purchaseForm.id, payload);
+      } else {
+        await financeService.createDailyPurchase(payload);
+      }
+
+      toast.success("Daily purchase saved");
+      setPurchaseForm(emptyPurchaseForm);
+      setPurchaseItems([]);
+      setReloadKey((value) => value + 1);
+    } catch (error) {
+      toast.error("Save purchase failed", getApiErrorMessage(error));
+    } finally {
+      setIsSavingPurchase(false);
+    }
+  }
+
+  function reviewPurchase(row: DailyPurchase) {
+    setPurchaseForm({
+      id: row.id,
+      purchase_date: row.purchase_date,
+      vendor_name: row.vendor_name || "",
+      receipt_photo_url: row.receipt_photo_url || "",
+      raw_text: row.ai_raw_text || "",
+      ai_provider: row.ai_provider || "",
+      ai_json_result: row.ai_json_result || null,
+    });
+    setPurchaseItems(row.daily_purchase_items || []);
+  }
+
+  async function approvePurchase(row: DailyPurchase) {
+    try {
+      await financeService.approveDailyPurchase(row.id);
+      toast.success("Daily purchase approved");
+      setReloadKey((value) => value + 1);
+    } catch (error) {
+      toast.error("Approve failed", getApiErrorMessage(error));
+    }
+  }
+
+  async function handleGenerateReport() {
+    setIsGeneratingReport(true);
+
+    try {
+      const nextReport = await financeService.generateMonthlyReport({
+        month: reportMonth,
+        sync_google: syncGoogle,
+      });
+
+      setReport(nextReport);
+      toast.success(
+        "Monthly report generated",
+        nextReport.google.synced ? "Synced to Google Sheets" : undefined,
+      );
+    } catch (error) {
+      toast.error("Report failed", getApiErrorMessage(error));
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -263,6 +473,345 @@ export function FinancePage() {
             </p>
           </div>
         ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-950">
+                Daily Purchase AI Draft
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Foto/catatan belanja diparse jadi draft expense.
+              </p>
+            </div>
+            <Camera className="text-slate-400" size={22} />
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <input
+              type="date"
+              value={purchaseForm.purchase_date}
+              onChange={(event) =>
+                setPurchaseForm((current) => ({
+                  ...current,
+                  purchase_date: event.target.value,
+                }))
+              }
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none"
+            />
+            <input
+              value={purchaseForm.vendor_name}
+              onChange={(event) =>
+                setPurchaseForm((current) => ({
+                  ...current,
+                  vendor_name: event.target.value,
+                }))
+              }
+              placeholder="Vendor / toko"
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none"
+            />
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(event) =>
+                handleReceiptFile(event.target.files?.[0])
+              }
+              className="h-10 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none md:col-span-2"
+            />
+            <textarea
+              value={purchaseForm.raw_text}
+              onChange={(event) =>
+                setPurchaseForm((current) => ({
+                  ...current,
+                  raw_text: event.target.value,
+                }))
+              }
+              placeholder="Paste OCR result or type shopping note here"
+              className="min-h-28 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none md:col-span-2"
+            />
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleParsePurchase}
+              disabled={isParsingPurchase}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              <Camera size={16} />
+              {isParsingPurchase ? "Processing..." : "AI Process"}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setPurchaseItems((current) => [
+                  ...current,
+                  {
+                    item_name: "",
+                    qty: 1,
+                    unit: "",
+                    unit_price: 0,
+                    subtotal: 0,
+                    category: "Daily Store Expense",
+                    is_edited: true,
+                  },
+                ])
+              }
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700"
+            >
+              <Plus size={16} />
+              Add Item
+            </button>
+          </div>
+
+          {purchaseItems.length > 0 ? (
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    {["Item", "Qty", "Unit", "Price", "Subtotal", "Cat"].map(
+                      (head) => (
+                        <th
+                          key={head}
+                          className="px-3 py-2 text-left text-xs font-semibold uppercase text-slate-500"
+                        >
+                          {head}
+                        </th>
+                      ),
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {purchaseItems.map((item, index) => (
+                    <tr key={index}>
+                      <td className="px-3 py-2">
+                        <input
+                          value={item.item_name}
+                          onChange={(event) =>
+                            updatePurchaseItem(index, {
+                              item_name: event.target.value,
+                            })
+                          }
+                          className="h-9 w-40 rounded-lg border border-slate-200 px-2 text-sm"
+                        />
+                        {item.is_edited ? (
+                          <span className="ml-2 text-xs font-bold text-amber-600">
+                            edited
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number"
+                          value={item.qty}
+                          onChange={(event) =>
+                            updatePurchaseItem(index, {
+                              qty: Number(event.target.value),
+                            })
+                          }
+                          className="h-9 w-20 rounded-lg border border-slate-200 px-2 text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          value={item.unit || ""}
+                          onChange={(event) =>
+                            updatePurchaseItem(index, {
+                              unit: event.target.value,
+                            })
+                          }
+                          className="h-9 w-20 rounded-lg border border-slate-200 px-2 text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number"
+                          value={item.unit_price}
+                          onChange={(event) =>
+                            updatePurchaseItem(index, {
+                              unit_price: Number(event.target.value),
+                            })
+                          }
+                          className="h-9 w-28 rounded-lg border border-slate-200 px-2 text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-sm font-semibold">
+                        {money(item.subtotal)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          value={item.category}
+                          onChange={(event) =>
+                            updatePurchaseItem(index, {
+                              category: event.target.value,
+                            })
+                          }
+                          className="h-9 w-40 rounded-lg border border-slate-200 px-2 text-sm"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="mt-3 flex items-center justify-between">
+                <p className="text-sm font-bold">
+                  Total {money(purchaseTotal())}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSavePurchase}
+                  disabled={isSavingPurchase}
+                  className="inline-flex h-10 items-center rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {isSavingPurchase ? "Saving..." : "Save Draft"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-950">
+                Monthly Report
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Generate owner/finance report.
+              </p>
+            </div>
+            <FileSpreadsheet className="text-slate-400" size={22} />
+          </div>
+          <div className="mt-4 space-y-3">
+            <input
+              type="month"
+              value={reportMonth}
+              onChange={(event) => setReportMonth(event.target.value)}
+              className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none"
+            />
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={syncGoogle}
+                onChange={(event) => setSyncGoogle(event.target.checked)}
+              />
+              Sync Google Sheet
+            </label>
+            <button
+              type="button"
+              onClick={handleGenerateReport}
+              disabled={isGeneratingReport}
+              className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {isGeneratingReport ? "Generating..." : "Generate Report"}
+            </button>
+          </div>
+
+          {report ? (
+            <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-3 text-sm">
+              <div className="flex justify-between">
+                <span>Income</span>
+                <strong>{money(report.summary.income)}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Expense</span>
+                <strong>{money(report.summary.expense)}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Balance</span>
+                <strong>{money(report.summary.balance)}</strong>
+              </div>
+              <p className="text-xs font-semibold text-slate-500">
+                Google:{" "}
+                {report.google.synced
+                  ? "synced"
+                  : report.google.reason || "not synced"}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 p-4">
+          <h2 className="text-lg font-bold text-slate-950">
+            Daily Purchase Files
+          </h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                {["Date", "Vendor", "Status", "Total", "Actions"].map(
+                  (head) => (
+                    <th
+                      key={head}
+                      className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 last:text-right"
+                    >
+                      {head}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {dailyPurchases.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-5 py-8 text-center text-sm text-slate-500"
+                  >
+                    No daily purchase files yet.
+                  </td>
+                </tr>
+              ) : (
+                dailyPurchases.map((row) => (
+                  <tr key={row.id}>
+                    <td className="px-5 py-4 text-sm">
+                      {row.purchase_date}
+                    </td>
+                    <td className="px-5 py-4 text-sm font-semibold">
+                      {row.vendor_name || "-"}
+                    </td>
+                    <td className="px-5 py-4 text-sm">
+                      {row.status}
+                    </td>
+                    <td className="px-5 py-4 text-sm font-bold">
+                      {money(row.total_amount)}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="inline-flex gap-2">
+                        {row.status !== "APPROVED" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => reviewPurchase(row)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600"
+                              aria-label="Review purchase"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => approvePurchase(row)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-200 text-emerald-700"
+                              aria-label="Approve purchase"
+                            >
+                              <Check size={15} />
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">

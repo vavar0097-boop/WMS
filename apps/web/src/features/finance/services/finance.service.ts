@@ -59,6 +59,77 @@ export type PosSaleFinanceRow = {
   }>;
 };
 
+export type ParsedPurchaseItem = {
+  item_name: string;
+  qty: number;
+  unit?: string | null;
+  unit_price: number;
+  subtotal: number;
+  category: string;
+};
+
+export type ParsedPurchaseResult = {
+  provider: string;
+  result: {
+    purchase_date?: string;
+    vendor_name?: string | null;
+    total_amount: number;
+    confidence?: number;
+    items: ParsedPurchaseItem[];
+  };
+};
+
+export type DailyPurchaseItem = ParsedPurchaseItem & {
+  id?: string;
+  ai_original_value?: Record<string, unknown> | null;
+  is_edited?: boolean;
+};
+
+export type DailyPurchase = {
+  id: string;
+  purchase_date: string;
+  outlet_id?: string | null;
+  vendor_name?: string | null;
+  receipt_photo_url?: string | null;
+  ai_raw_text?: string | null;
+  ai_json_result?: Record<string, unknown> | null;
+  ai_provider?: string | null;
+  status: "DRAFT_AI" | "NEEDS_REVIEW" | "APPROVED" | "REJECTED";
+  total_amount: number | string;
+  daily_purchase_items?: DailyPurchaseItem[];
+};
+
+export type DailyPurchasePayload = {
+  purchase_date: string;
+  outlet_id?: string | null;
+  vendor_name?: string | null;
+  receipt_photo_url?: string | null;
+  ai_raw_text?: string | null;
+  ai_json_result?: Record<string, unknown> | null;
+  ai_provider?: string | null;
+  status?: "DRAFT_AI" | "NEEDS_REVIEW";
+  total_amount: number;
+  items: DailyPurchaseItem[];
+};
+
+export type MonthlyReport = {
+  month: string;
+  summary: {
+    income: number;
+    expense: number;
+    balance: number;
+    cash_sales: number;
+    noncash_sales: number;
+    sales_count: number;
+    daily_purchase_count: number;
+  };
+  google: {
+    synced: boolean;
+    reason?: string;
+    spreadsheet_id?: string;
+  };
+};
+
 export type FinanceSummary = {
   income: number;
   expense: number;
@@ -180,5 +251,71 @@ export const financeService = {
     });
 
     return response.data;
+  },
+
+  async parseDailyPurchase(rawText: string) {
+    const response = await apiClient.post(
+      "/finance/daily-purchases/parse",
+      {
+        raw_text: rawText,
+      },
+    );
+
+    return unwrap(response.data) as ParsedPurchaseResult;
+  },
+
+  async getDailyPurchases(params?: {
+    status?: string;
+    limit?: number;
+  }) {
+    const response = await apiClient.get("/finance/daily-purchases", {
+      params: {
+        limit: params?.limit ?? 50,
+        ...(params?.status ? { status: params.status } : {}),
+      },
+    });
+
+    return normalizeArray<DailyPurchase>(response.data);
+  },
+
+  async createDailyPurchase(payload: DailyPurchasePayload) {
+    const response = await apiClient.post(
+      "/finance/daily-purchases",
+      payload,
+    );
+
+    return unwrap(response.data) as DailyPurchase;
+  },
+
+  async updateDailyPurchase(
+    id: string,
+    payload: DailyPurchasePayload,
+  ) {
+    const response = await apiClient.put(
+      `/finance/daily-purchases/${id}`,
+      payload,
+    );
+
+    return unwrap(response.data) as DailyPurchase;
+  },
+
+  async approveDailyPurchase(id: string) {
+    const response = await apiClient.post(
+      `/finance/daily-purchases/${id}/approve`,
+    );
+
+    return unwrap(response.data) as DailyPurchase;
+  },
+
+  async generateMonthlyReport(payload: {
+    month: string;
+    sync_google: boolean;
+  }) {
+    const response = await apiClient.post(
+      "/finance/monthly-report",
+      payload,
+    );
+
+    return unwrap(response.data) as MonthlyReport;
   },
 };
