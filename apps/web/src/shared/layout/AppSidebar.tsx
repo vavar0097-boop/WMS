@@ -28,7 +28,6 @@ const sidebarItems: SidebarItem[] = [
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
-    disabled: true,
   },
   {
     label: "Transfers",
@@ -44,31 +43,26 @@ const sidebarItems: SidebarItem[] = [
     label: "Items",
     href: "/dashboard/items",
     icon: Package,
-    disabled: true,
   },
   {
     label: "Warehouses",
     href: "/dashboard/warehouses",
     icon: Warehouse,
-    disabled: true,
   },
   {
     label: "Locations",
     href: "/dashboard/locations",
     icon: MapPin,
-    disabled: true,
   },
   {
     label: "Users",
     href: "/dashboard/users",
     icon: Users,
-    disabled: true,
   },
   {
     label: "Audit Logs",
     href: "/dashboard/audit-logs",
     icon: ClipboardList,
-    disabled: true,
   },
 ];
 
