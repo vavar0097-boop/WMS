@@ -1,15 +1,31 @@
-import { Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { getApiErrorMessage } from "@/shared/lib/api/error";
+import { toast } from "@/shared/ui/toast";
 import { MasterDataShell } from "../components/MasterDataShell";
 import { StatusPill } from "../components/StatusPill";
 import {
+  ItemPayload,
   ItemRow,
   Pagination,
+  UnitRow,
   masterDataPageService,
 } from "../services/master-data-page.service";
-import { getApiErrorMessage } from "@/shared/lib/api/error";
-import { toast } from "@/shared/ui/toast";
+
+const itemTypes = [
+  "RAW_MATERIAL",
+  "FINISHED_GOOD",
+  "SUPPLY",
+  "ASSET",
+];
 
 const initialPagination: Pagination = {
   page: 1,
@@ -18,12 +34,83 @@ const initialPagination: Pagination = {
   totalPages: 0,
 };
 
+type ItemFormState = {
+  item_name: string;
+  item_type: string;
+  base_unit_id: string;
+  barcode: string;
+  description: string;
+  is_active: boolean;
+};
+
+const emptyForm: ItemFormState = {
+  item_name: "",
+  item_type: "RAW_MATERIAL",
+  base_unit_id: "",
+  barcode: "",
+  description: "",
+  is_active: true,
+};
+
+function toPayload(form: ItemFormState): ItemPayload {
+  return {
+    item_name: form.item_name.trim(),
+    item_type: form.item_type,
+    base_unit_id: form.base_unit_id,
+    ...(form.barcode.trim()
+      ? { barcode: form.barcode.trim() }
+      : {}),
+    ...(form.description.trim()
+      ? { description: form.description.trim() }
+      : {}),
+    is_active: form.is_active,
+  };
+}
+
 export function ItemsPage() {
   const [items, setItems] = useState<ItemRow[]>([]);
+  const [units, setUnits] = useState<UnitRow[]>([]);
   const [pagination, setPagination] =
     useState(initialPagination);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<ItemRow | null>(
+    null,
+  );
+  const [form, setForm] = useState<ItemFormState>(emptyForm);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const unitById = useMemo(
+    () => new Map(units.map((unit) => [unit.id, unit])),
+    [units],
+  );
+
+  async function loadUnits() {
+    const rows = await masterDataPageService.getUnits({
+      limit: 100,
+    });
+
+    setUnits(rows);
+
+    if (!form.base_unit_id && rows[0]?.id) {
+      setForm((current) => ({
+        ...current,
+        base_unit_id: rows[0].id,
+      }));
+    }
+  }
+
+  useEffect(() => {
+    loadUnits().catch((error) => {
+      toast.error(
+        "Units failed to load",
+        getApiErrorMessage(error),
+      );
+    });
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -62,12 +149,117 @@ export function ItemsPage() {
       mounted = false;
       window.clearTimeout(timer);
     };
-  }, [search]);
+  }, [search, reloadKey]);
+
+  function openCreateModal() {
+    setEditingItem(null);
+    setForm({
+      ...emptyForm,
+      base_unit_id: units[0]?.id ?? "",
+    });
+    setModalOpen(true);
+  }
+
+  function openEditModal(item: ItemRow) {
+    setEditingItem(item);
+    setForm({
+      item_name: item.item_name,
+      item_type: item.item_type || "RAW_MATERIAL",
+      base_unit_id:
+        item.base_unit_id ||
+        units.find((unit) => unit.code === item.units?.code)?.id ||
+        "",
+      barcode: item.barcode || "",
+      description: item.description || "",
+      is_active: item.is_active ?? true,
+    });
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    if (isSaving) return;
+
+    setModalOpen(false);
+    setEditingItem(null);
+    setForm(emptyForm);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!form.item_name.trim() || !form.base_unit_id) {
+      toast.error(
+        "Item form incomplete",
+        "Item name and base unit are required.",
+      );
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      if (editingItem) {
+        await masterDataPageService.updateItem(
+          editingItem.id,
+          toPayload(form),
+        );
+        toast.success("Item updated", form.item_name.trim());
+      } else {
+        await masterDataPageService.createItem(toPayload(form));
+        toast.success("Item created", form.item_name.trim());
+      }
+
+      closeModal();
+      setReloadKey((value) => value + 1);
+    } catch (error) {
+      toast.error(
+        editingItem
+          ? "Item update failed"
+          : "Item creation failed",
+        getApiErrorMessage(error),
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDelete(item: ItemRow) {
+    const confirmed = window.confirm(
+      `Delete item ${item.item_code} - ${item.item_name}?`,
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(item.id);
+
+    try {
+      await masterDataPageService.deleteItem(item.id);
+      toast.success("Item deleted", item.item_name);
+      setReloadKey((value) => value + 1);
+    } catch (error) {
+      toast.error(
+        "Item delete failed",
+        getApiErrorMessage(error),
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <MasterDataShell
       title="Items"
-      description="Browse active inventory master items and unit assignments."
+      description="Create, edit, and manage inventory master items."
+      action={
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          <Plus size={16} />
+          Add Item
+        </button>
+      }
     >
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 md:flex-row md:items-center md:justify-between">
@@ -84,9 +276,19 @@ export function ItemsPage() {
             />
           </div>
 
-          <p className="text-sm font-medium text-slate-500">
-            {pagination.total} items
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm font-medium text-slate-500">
+              {pagination.total} items
+            </p>
+            <button
+              type="button"
+              onClick={() => setReloadKey((value) => value + 1)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+              aria-label="Refresh items"
+            >
+              <RefreshCw size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -108,13 +310,16 @@ export function ItemsPage() {
                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Status
                 </th>
+                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-5 py-10 text-center text-sm text-slate-500"
                   >
                     Loading items...
@@ -123,42 +328,236 @@ export function ItemsPage() {
               ) : items.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-5 py-10 text-center text-sm text-slate-500"
                   >
                     No items found.
                   </td>
                 </tr>
               ) : (
-                items.map((item) => (
-                  <tr key={item.id}>
-                    <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-slate-950">
-                      {item.item_code}
-                    </td>
-                    <td className="px-5 py-4">
-                      <p className="text-sm font-medium text-slate-950">
-                        {item.item_name}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {item.barcode || "No barcode"}
-                      </p>
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-600">
-                      {item.item_type || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-600">
-                      {item.units?.code || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-4">
-                      <StatusPill active={item.is_active} />
-                    </td>
-                  </tr>
-                ))
+                items.map((item) => {
+                  const unit =
+                    item.base_unit_id
+                      ? unitById.get(item.base_unit_id)
+                      : null;
+
+                  return (
+                    <tr key={item.id}>
+                      <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-slate-950">
+                        {item.item_code}
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="text-sm font-medium text-slate-950">
+                          {item.item_name}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {item.barcode || "No barcode"}
+                        </p>
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-600">
+                        {item.item_type || "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-600">
+                        {unit?.code || item.units?.code || "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <StatusPill active={item.is_active} />
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 text-right">
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(item)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+                            aria-label={`Edit ${item.item_name}`}
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item)}
+                            disabled={deletingId === item.id}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label={`Delete ${item.item_name}`}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {modalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-950">
+                  {editingItem ? "Edit Item" : "Add Item"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {editingItem
+                    ? editingItem.item_code
+                    : "Create a new inventory master item."}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeModal}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+                aria-label="Close item form"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Item Name
+                  </span>
+                  <input
+                    value={form.item_name}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        item_name: event.target.value,
+                      }))
+                    }
+                    className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                    required
+                    minLength={3}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Item Type
+                  </span>
+                  <select
+                    value={form.item_type}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        item_type: event.target.value,
+                      }))
+                    }
+                    className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                  >
+                    {itemTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Base Unit
+                  </span>
+                  <select
+                    value={form.base_unit_id}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        base_unit_id: event.target.value,
+                      }))
+                    }
+                    className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                    required
+                  >
+                    <option value="">Select unit</option>
+                    {units.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.code} - {unit.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Barcode
+                  </span>
+                  <input
+                    value={form.barcode}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        barcode: event.target.value,
+                      }))
+                    }
+                    className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                  />
+                </label>
+
+                <label className="flex items-end gap-3 rounded-xl border border-slate-200 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={form.is_active}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        is_active: event.target.checked,
+                      }))
+                    }
+                    className="mb-1 h-4 w-4 rounded border-slate-300"
+                  />
+                  <span className="text-sm font-semibold text-slate-700">
+                    Active item
+                  </span>
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Description
+                  </span>
+                  <textarea
+                    value={form.description}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        description: event.target.value,
+                      }))
+                    }
+                    className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSaving
+                    ? "Saving..."
+                    : editingItem
+                      ? "Save Changes"
+                      : "Create Item"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </MasterDataShell>
   );
 }

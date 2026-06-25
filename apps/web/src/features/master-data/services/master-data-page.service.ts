@@ -19,6 +19,7 @@ export type ItemRow = {
   item_code: string;
   item_name: string;
   item_type?: string | null;
+  base_unit_id?: string | null;
   barcode?: string | null;
   description?: string | null;
   is_active?: boolean | null;
@@ -26,6 +27,23 @@ export type ItemRow = {
     code?: string | null;
     name?: string | null;
   } | null;
+};
+
+export type UnitRow = {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  is_active?: boolean | null;
+};
+
+export type ItemPayload = {
+  item_name: string;
+  item_type: string;
+  base_unit_id: string;
+  barcode?: string;
+  description?: string;
+  is_active?: boolean;
 };
 
 export type WarehouseRow = {
@@ -159,5 +177,37 @@ export const masterDataPageService = {
     });
 
     return normalizeArray<LocationRow>(response.data);
+  },
+
+  async getUnits(params?: {
+    search?: string;
+    limit?: number;
+  }) {
+    const response = await apiClient.get("/units", {
+      params: {
+        limit: params?.limit ?? 100,
+        ...(params?.search ? { search: params.search } : {}),
+      },
+    });
+
+    return normalizeArray<UnitRow>(response.data);
+  },
+
+  async createItem(payload: ItemPayload) {
+    const response = await apiClient.post("/items", payload);
+
+    return response.data;
+  },
+
+  async updateItem(id: string, payload: Partial<ItemPayload>) {
+    const response = await apiClient.put(`/items/${id}`, payload);
+
+    return response.data;
+  },
+
+  async deleteItem(id: string) {
+    const response = await apiClient.delete(`/items/${id}`);
+
+    return response.data;
   },
 };
