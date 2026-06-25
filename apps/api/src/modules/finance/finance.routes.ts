@@ -20,6 +20,18 @@ router.get(
   permissionMiddleware(PERMISSIONS.FINANCE_READ),
   controller.getSummary.bind(controller),
 );
+router.get(
+  "/cashier-settlements",
+  authMiddleware,
+  permissionMiddleware(PERMISSIONS.FINANCE_READ),
+  controller.getCashierSettlements.bind(controller),
+);
+router.get(
+  "/pos-sales",
+  authMiddleware,
+  permissionMiddleware(PERMISSIONS.FINANCE_READ),
+  controller.getPosSales.bind(controller),
+);
 router.post(
   "/transactions",
   authMiddleware,

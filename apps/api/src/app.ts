@@ -7,9 +7,11 @@ import morgan from "morgan";
 
 import { logger } from "./config/logger";
 import { errorMiddleware } from "./middleware/error.middleware";
+import cashierSessionRoutes from "./modules/cashier-sessions/routes/cashier-session.route";
 import itemRoutes from "./modules/items/routes/item.route";
 import financeRoutes from "./modules/finance/finance.routes";
 import locationRoutes from "./modules/locations/location.routes";
+import posRoutes from "./modules/pos/routes/pos.route";
 import settingsRoutes from "./modules/settings/settings.routes";
 import stockRoutes from "./modules/stocks/routes/stock.route";
 import transferRoutes from "./modules/transfers/routes/transfer.route";
@@ -50,6 +52,8 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/cashier-sessions", cashierSessionRoutes);
+app.use("/api/pos", posRoutes);
 app.use("/api/items", itemRoutes);
 app.use("/api/finance", financeRoutes);
 app.use("/api/stocks", stockRoutes);

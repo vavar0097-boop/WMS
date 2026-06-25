@@ -10,16 +10,32 @@ const userRepository = new UserRepository();
 
 const defaultRoles = [
   {
+    name: "OWNER",
+    description: "Business owner with full system access",
+  },
+  {
+    name: "FINANCE",
+    description: "Finance, cashier settlement, and reports",
+  },
+  {
+    name: "WAREHOUSE",
+    description: "Warehouse stock and transfer operations",
+  },
+  {
+    name: "CASHIER",
+    description: "POS cashier access",
+  },
+  {
     name: "ADMIN",
-    description: "Full system access",
+    description: "Legacy full system access",
   },
   {
     name: "SUPERVISOR",
-    description: "Warehouse supervisor",
+    description: "Operational supervisor",
   },
   {
     name: "OPERATOR",
-    description: "Warehouse operator",
+    description: "Legacy cashier/operator access",
   },
   {
     name: "AUDITOR",
@@ -79,12 +95,8 @@ export class UserService {
   }
 
   async getRoles() {
-    let roles = await userRepository.findRoles();
-
-    if (roles.length === 0) {
-      await userRepository.upsertRoles(defaultRoles);
-      roles = await userRepository.findRoles();
-    }
+    await userRepository.upsertRoles(defaultRoles);
+    const roles = await userRepository.findRoles();
 
     return roles;
   }

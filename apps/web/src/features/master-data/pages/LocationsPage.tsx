@@ -19,7 +19,7 @@ import {
   masterDataPageService,
 } from "../services/master-data-page.service";
 
-const locationTypes = ["ZONE", "AISLE", "RACK", "BIN"];
+const locationTypes = ["ZONE", "AISLE", "RACK", "BIN", "OUTLET"];
 
 type LocationForm = {
   location_code: string;

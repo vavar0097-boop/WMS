@@ -82,4 +82,66 @@ export class FinanceRepository {
 
     if (error) throw error;
   }
+
+  async findCashierSettlements(params?: {
+    status?: string;
+    limit?: number;
+  }) {
+    const limit = params?.limit ?? 100;
+
+    let query = supabase
+      .from("v_cashier_session_summary")
+      .select("*")
+      .order("opened_at", {
+        ascending: false,
+      })
+      .limit(limit);
+
+    if (params?.status) {
+      query = query.eq("status", params.status);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    return data ?? [];
+  }
+
+  async findPosSales(params?: {
+    status?: string;
+    limit?: number;
+  }) {
+    const limit = params?.limit ?? 100;
+
+    let query = supabase
+      .from("sales")
+      .select(`
+        *,
+        sale_payments (*),
+        sale_items (*),
+        cashier:cashier_id (
+          username,
+          full_name
+        ),
+        location:location_id (
+          code,
+          name
+        )
+      `)
+      .order("created_at", {
+        ascending: false,
+      })
+      .limit(limit);
+
+    if (params?.status) {
+      query = query.eq("status", params.status);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    return data ?? [];
+  }
 }

@@ -14,7 +14,7 @@ type AuthStore = {
   isLoggingOut: boolean;
   hasCheckedSession: boolean;
 
-  login: (payload: LoginPayload) => Promise<void>;
+  login: (payload: LoginPayload) => Promise<AuthUser | null>;
   checkSession: () => Promise<void>;
   logout: () => Promise<void>;
   clearSession: () => void;
@@ -41,6 +41,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
         isAuthenticated: true,
         hasCheckedSession: true,
       });
+
+      return user;
     } finally {
       set({
         isLoggingIn: false,

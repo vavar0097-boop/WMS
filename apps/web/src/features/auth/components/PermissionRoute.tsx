@@ -5,6 +5,7 @@ import {
   Permission,
   hasPermission,
 } from "@/shared/auth/permissions";
+import { getHomePathForRole } from "@/shared/auth/role-home";
 import { useAuthStore } from "@/stores/auth.store";
 
 type PermissionRouteProps = {
@@ -21,7 +22,7 @@ export function PermissionRoute({
   if (!hasPermission(user?.role, permission)) {
     return (
       <Navigate
-        to="/dashboard"
+        to={getHomePathForRole(user?.role)}
         replace
       />
     );

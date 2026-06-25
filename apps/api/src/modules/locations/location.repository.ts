@@ -30,6 +30,7 @@ export class LocationRepository {
       AISLE: "AIS",
       RACK: "RCK",
       BIN: "BIN",
+      OUTLET: "OUT",
     };
     const prefix = prefixMap[locationType] ?? "LOC";
 

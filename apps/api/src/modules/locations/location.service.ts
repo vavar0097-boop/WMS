@@ -12,6 +12,7 @@ const locationTypes = new Set([
   "AISLE",
   "RACK",
   "BIN",
+  "OUTLET",
 ]);
 
 type LocationPayload = {

@@ -73,6 +73,60 @@ export class FinanceController {
     }
   }
 
+  async getCashierSettlements(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const rows = await financeService.getCashierSettlements({
+        status:
+          typeof req.query.status === "string"
+            ? req.query.status
+            : undefined,
+        limit:
+          typeof req.query.limit === "string"
+            ? Number(req.query.limit)
+            : undefined,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Cashier settlements retrieved successfully",
+        data: rows,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPosSales(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const rows = await financeService.getPosSales({
+        status:
+          typeof req.query.status === "string"
+            ? req.query.status
+            : undefined,
+        limit:
+          typeof req.query.limit === "string"
+            ? Number(req.query.limit)
+            : undefined,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "POS sales retrieved successfully",
+        data: rows,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updateTransaction(
     req: Request,
     res: Response,

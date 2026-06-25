@@ -152,7 +152,8 @@ export class StockRepository {
         | "INITIAL_STOCK"
         | "TRANSFER"
         | "ADJUSTMENT"
-        | "MANUAL";
+        | "MANUAL"
+        | "SALE";
 
       reference_id: string | null;
 

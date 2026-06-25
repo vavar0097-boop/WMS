@@ -2,6 +2,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   Trash2,
   X,
@@ -14,6 +15,8 @@ import {
   FinancePayload,
   FinanceSummary,
   FinanceTransaction,
+  CashierSettlement,
+  PosSaleFinanceRow,
   financeService,
 } from "../services/finance.service";
 
@@ -58,6 +61,8 @@ function toPayload(form: FinanceForm): FinancePayload {
 
 export function FinancePage() {
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
+  const [settlements, setSettlements] = useState<CashierSettlement[]>([]);
+  const [posSales, setPosSales] = useState<PosSaleFinanceRow[]>([]);
   const [summary, setSummary] = useState<FinanceSummary>({
     income: 0,
     expense: 0,
@@ -81,19 +86,28 @@ export function FinancePage() {
       setIsLoading(true);
 
       try {
-        const [rows, nextSummary] = await Promise.all([
+        const [rows, nextSummary, nextSettlements, nextPosSales] =
+          await Promise.all([
           financeService.getTransactions({
             limit: 100,
             ...(search.trim() ? { search: search.trim() } : {}),
             ...(type ? { type } : {}),
           }),
           financeService.getSummary(),
+          financeService.getCashierSettlements({
+            limit: 20,
+          }),
+          financeService.getPosSales({
+            limit: 20,
+          }),
         ]);
 
         if (!mounted) return;
 
         setTransactions(rows);
         setSummary(nextSummary);
+        setSettlements(nextSettlements);
+        setPosSales(nextPosSales);
       } catch (error) {
         if (!mounted) return;
 
@@ -194,6 +208,22 @@ export function FinancePage() {
     }
   }
 
+  async function handleVoidSale(row: PosSaleFinanceRow) {
+    const reason = window.prompt(
+      `Void sale ${row.sale_no}? Input reason.`,
+    );
+
+    if (!reason?.trim()) return;
+
+    try {
+      await financeService.voidPosSale(row.id, reason.trim());
+      toast.success("Sale voided", row.sale_no);
+      setReloadKey((value) => value + 1);
+    } catch (error) {
+      toast.error("Void sale failed", getApiErrorMessage(error));
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -233,6 +263,157 @@ export function FinancePage() {
             </p>
           </div>
         ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 p-4">
+            <h2 className="text-lg font-bold text-slate-950">
+              Cashier Settlement
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Shift cash, deposits, expenses, and difference.
+            </p>
+          </div>
+          <div className="max-h-[420px] overflow-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  {["Session", "Sales", "Expected", "Actual", "Diff"].map(
+                    (head) => (
+                      <th
+                        key={head}
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500"
+                      >
+                        {head}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {settlements.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-4 py-8 text-center text-sm text-slate-500"
+                    >
+                      No cashier shifts yet.
+                    </td>
+                  </tr>
+                ) : (
+                  settlements.map((row) => (
+                    <tr key={row.cashier_session_id}>
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-bold text-slate-950">
+                          {row.session_no}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {row.shift_name} - {row.status}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold">
+                        {money(row.total_sales)}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {money(row.calculated_expected_cash)}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {row.actual_cash === null ||
+                        row.actual_cash === undefined
+                          ? "-"
+                          : money(row.actual_cash)}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-bold">
+                        {row.cash_difference === null ||
+                        row.cash_difference === undefined
+                          ? "-"
+                          : money(row.cash_difference)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 p-4">
+            <h2 className="text-lg font-bold text-slate-950">
+              POS Sales
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Recent paid and voided cashier sales.
+            </p>
+          </div>
+          <div className="max-h-[420px] overflow-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  {["Sale", "Cashier", "Amount", "Status", ""].map(
+                    (head) => (
+                      <th
+                        key={head}
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 last:text-right"
+                      >
+                        {head}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {posSales.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-4 py-8 text-center text-sm text-slate-500"
+                    >
+                      No POS sales yet.
+                    </td>
+                  </tr>
+                ) : (
+                  posSales.map((row) => (
+                    <tr key={row.id}>
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-bold text-slate-950">
+                          {row.sale_no}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {row.location?.name || "-"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {row.cashier?.full_name ||
+                          row.cashier?.username ||
+                          "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold">
+                        {money(row.grand_total)}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {row.status}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {row.status === "PAID" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleVoidSale(row)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 text-rose-600 transition hover:bg-rose-50"
+                            aria-label="Void sale"
+                          >
+                            <RotateCcw size={15} />
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">

@@ -13,6 +13,7 @@ import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { ItemsPage } from "@/features/master-data/pages/ItemsPage";
 import { LocationsPage } from "@/features/master-data/pages/LocationsPage";
 import { WarehousesPage } from "@/features/master-data/pages/WarehousesPage";
+import { PosPage } from "@/features/pos/pages/PosPage";
 import { StockPage } from "@/features/stocks/pages/StockPage";
 import { GlobalSettingsPage } from "@/features/settings/pages/GlobalSettingsPage";
 import { AuditLogsPage } from "@/features/system/pages/AuditLogsPage";
@@ -23,6 +24,19 @@ import { TransferListPage } from "@/features/transfers/pages/TransferListPage";
 import { DashboardLayout } from "@/shared/layout/DashboardLayout";
 import { Toaster } from "@/shared/ui/toast";
 import { PERMISSIONS } from "@/shared/auth/permissions";
+import { getHomePathForRole } from "@/shared/auth/role-home";
+import { useAuthStore } from "@/stores/auth.store";
+
+function RoleHomeRedirect() {
+  const role = useAuthStore((state) => state.user?.role);
+
+  return (
+    <Navigate
+      to={getHomePathForRole(role)}
+      replace
+    />
+  );
+}
 
 export function App() {
   return (
@@ -31,9 +45,24 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
 
         <Route
+          path="/pos"
+          element={
+            <ProtectedRoute>
+              <PermissionRoute
+                permission={PERMISSIONS.CASHIER_SESSIONS_READ}
+              >
+                <PosPage />
+              </PermissionRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/"
           element={
-            <Navigate to="/dashboard/transfers" replace />
+            <ProtectedRoute>
+              <RoleHomeRedirect />
+            </ProtectedRoute>
           }
         />
 
@@ -172,7 +201,7 @@ export function App() {
           path="*"
           element={
             <Navigate
-              to="/dashboard/transfers"
+              to="/"
               replace
             />
           }

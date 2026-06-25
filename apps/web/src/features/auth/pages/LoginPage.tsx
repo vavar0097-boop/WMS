@@ -14,6 +14,7 @@ import {
 import { Input } from "@/shared/ui/input/input";
 import { toast } from "@/shared/ui/toast";
 import { useAuthStore } from "@/stores/auth.store";
+import { getHomePathForRole } from "@/shared/auth/role-home";
 
 type LocationState = {
   from?: string;
@@ -23,13 +24,13 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { login, isAuthenticated, isLoggingIn } = useAuthStore();
+  const { login, user, isAuthenticated, isLoggingIn } = useAuthStore();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const state = location.state as LocationState | null;
-  const redirectTo = state?.from || "/dashboard/transfers";
+  const redirectTo = state?.from || getHomePathForRole(user?.role);
 
   const canSubmit =
     username.trim().length > 0 &&
@@ -39,7 +40,7 @@ export function LoginPage() {
   if (isAuthenticated) {
     return (
       <Navigate
-        to="/dashboard/transfers"
+        to={redirectTo}
         replace
       />
     );
@@ -57,7 +58,7 @@ export function LoginPage() {
     }
 
     try {
-      await login({
+      const loggedInUser = await login({
         username: username.trim(),
         password,
       });
@@ -67,7 +68,7 @@ export function LoginPage() {
         "Welcome back to Enterprise WMS.",
       );
 
-      navigate(redirectTo, {
+      navigate(state?.from || getHomePathForRole(loggedInUser?.role), {
         replace: true,
       });
     } catch (error) {

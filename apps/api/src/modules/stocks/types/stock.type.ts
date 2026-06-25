@@ -7,7 +7,8 @@ export type ReferenceType =
   | "INITIAL_STOCK"
   | "TRANSFER"
   | "ADJUSTMENT"
-  | "MANUAL";
+  | "MANUAL"
+  | "SALE";
 
 export type StockEffect =
   | "PLUS"

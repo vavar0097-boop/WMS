@@ -77,4 +77,18 @@ export class FinanceService {
   async deleteTransaction(id: string) {
     await financeRepository.delete(id);
   }
+
+  async getCashierSettlements(params?: {
+    status?: string;
+    limit?: number;
+  }) {
+    return financeRepository.findCashierSettlements(params);
+  }
+
+  async getPosSales(params?: {
+    status?: string;
+    limit?: number;
+  }) {
+    return financeRepository.findPosSales(params);
+  }
 }
