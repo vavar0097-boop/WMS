@@ -41,7 +41,9 @@ const emptyForm: LocationForm = {
 
 function toPayload(form: LocationForm): LocationPayload {
   return {
-    location_code: form.location_code.trim(),
+    ...(form.location_code.trim()
+      ? { location_code: form.location_code.trim() }
+      : {}),
     location_name: form.location_name.trim(),
     location_type: form.location_type,
     warehouse_id: form.warehouse_id,
@@ -186,13 +188,12 @@ export function LocationsPage() {
     event.preventDefault();
 
     if (
-      !form.location_code.trim() ||
       !form.location_name.trim() ||
       !form.warehouse_id
     ) {
       toast.error(
         "Location form incomplete",
-        "Location code, name, and warehouse are required.",
+        "Location name and warehouse are required. Code can be auto-generated.",
       );
       return;
     }
@@ -418,7 +419,7 @@ export function LocationsPage() {
                     : "Add Location"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Location code must be unique per warehouse.
+                  Leave code empty to auto-generate a unique location code.
                 </p>
               </div>
 
@@ -447,7 +448,7 @@ export function LocationsPage() {
                       }))
                     }
                     className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
-                    required
+                    placeholder="Auto-generated if empty"
                   />
                 </label>
 

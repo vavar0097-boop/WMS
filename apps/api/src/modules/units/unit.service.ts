@@ -7,6 +7,13 @@ export class UnitService {
     search?: string;
     limit?: number;
   }) {
-    return unitRepository.findAll(params);
+    let units = await unitRepository.findAll(params);
+
+    if (units.length === 0 && !params?.search) {
+      await unitRepository.seedDefaults();
+      units = await unitRepository.findAll(params);
+    }
+
+    return units;
   }
 }

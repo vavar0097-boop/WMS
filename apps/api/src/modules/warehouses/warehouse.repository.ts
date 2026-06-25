@@ -18,6 +18,34 @@ export type WarehousePayload = {
 };
 
 export class WarehouseRepository {
+  async generateWarehouseCode() {
+    const { data, error } = await supabase
+      .from("warehouses")
+      .select("code")
+      .ilike("code", "WH-%")
+      .order("code", {
+        ascending: false,
+      })
+      .limit(1000);
+
+    if (error) {
+      throw error;
+    }
+
+    const nextNumber =
+      ((data ?? [])
+        .map((row) => {
+          const value = String(row.code ?? "");
+          const match = value.match(/-(\d+)$/);
+
+          return match ? Number(match[1]) : 0;
+        })
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => b - a)[0] ?? 0) + 1;
+
+    return `WH-${String(nextNumber).padStart(6, "0")}`;
+  }
+
   async findAll(params?: {
     search?: string;
     limit?: number;

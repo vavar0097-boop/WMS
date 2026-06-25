@@ -7,24 +7,26 @@ import {
 const warehouseRepository = new WarehouseRepository();
 
 type WarehousePayload = {
-  warehouse_code: string;
+  warehouse_code?: string;
   warehouse_name: string;
   address?: string | null;
   is_active?: boolean;
 };
 
-function cleanPayload(payload: WarehousePayload) {
+async function cleanPayload(payload: WarehousePayload) {
   const warehouseCode = payload.warehouse_code?.trim();
   const warehouseName = payload.warehouse_name?.trim();
 
-  if (!warehouseCode || !warehouseName) {
+  if (!warehouseName) {
     throw new BadRequestError(
-      "Warehouse code and name are required",
+      "Warehouse name is required",
     );
   }
 
   return {
-    warehouse_code: warehouseCode,
+    warehouse_code:
+      warehouseCode ||
+      await warehouseRepository.generateWarehouseCode(),
     warehouse_name: warehouseName,
     address: payload.address?.trim() || null,
     is_active: payload.is_active ?? true,
@@ -51,7 +53,9 @@ export class WarehouseService {
   }
 
   async createWarehouse(payload: WarehousePayload) {
-    return warehouseRepository.create(cleanPayload(payload));
+    return warehouseRepository.create(
+      await cleanPayload(payload)
+    );
   }
 
   async updateWarehouse(

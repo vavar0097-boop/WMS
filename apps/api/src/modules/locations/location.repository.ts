@@ -12,7 +12,7 @@ export type LocationRow = {
 };
 
 export type LocationPayload = {
-  location_code: string;
+  location_code?: string;
   location_name: string;
   location_type: string;
   warehouse_id: string;
@@ -21,6 +21,46 @@ export type LocationPayload = {
 };
 
 export class LocationRepository {
+  async generateLocationCode(
+    locationType: string,
+    warehouseId: string,
+  ) {
+    const prefixMap: Record<string, string> = {
+      ZONE: "ZON",
+      AISLE: "AIS",
+      RACK: "RCK",
+      BIN: "BIN",
+    };
+    const prefix = prefixMap[locationType] ?? "LOC";
+
+    const { data, error } = await supabase
+      .from("locations")
+      .select("code")
+      .eq("warehouse_id", warehouseId)
+      .ilike("code", `${prefix}-%`)
+      .order("code", {
+        ascending: false,
+      })
+      .limit(1000);
+
+    if (error) {
+      throw error;
+    }
+
+    const nextNumber =
+      ((data ?? [])
+        .map((row) => {
+          const value = String(row.code ?? "");
+          const match = value.match(/-(\d+)$/);
+
+          return match ? Number(match[1]) : 0;
+        })
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => b - a)[0] ?? 0) + 1;
+
+    return `${prefix}-${String(nextNumber).padStart(6, "0")}`;
+  }
+
   async findAll(params?: {
     search?: string;
     warehouse_id?: string;

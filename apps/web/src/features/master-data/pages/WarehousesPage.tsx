@@ -34,7 +34,9 @@ const emptyForm: WarehouseForm = {
 
 function toPayload(form: WarehouseForm): WarehousePayload {
   return {
-    warehouse_code: form.warehouse_code.trim(),
+    ...(form.warehouse_code.trim()
+      ? { warehouse_code: form.warehouse_code.trim() }
+      : {}),
     warehouse_name: form.warehouse_name.trim(),
     address: form.address.trim() || null,
     is_active: form.is_active,
@@ -119,12 +121,11 @@ export function WarehousesPage() {
     event.preventDefault();
 
     if (
-      !form.warehouse_code.trim() ||
       !form.warehouse_name.trim()
     ) {
       toast.error(
         "Warehouse form incomplete",
-        "Warehouse code and name are required.",
+        "Warehouse name is required. Code can be auto-generated.",
       );
       return;
     }
@@ -301,7 +302,7 @@ export function WarehousesPage() {
                     : "Add Warehouse"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Warehouse code must be unique.
+                  Leave code empty to auto-generate a unique warehouse code.
                 </p>
               </div>
 
@@ -330,7 +331,7 @@ export function WarehousesPage() {
                       }))
                     }
                     className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
-                    required
+                    placeholder="Auto-generated if empty"
                   />
                 </label>
 

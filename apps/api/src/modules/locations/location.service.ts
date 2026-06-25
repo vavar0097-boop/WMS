@@ -15,7 +15,7 @@ const locationTypes = new Set([
 ]);
 
 type LocationPayload = {
-  location_code: string;
+  location_code?: string;
   location_name: string;
   location_type: string;
   warehouse_id: string;
@@ -45,13 +45,12 @@ async function cleanPayload(
   const parentId = payload.parent_id?.trim() || null;
 
   if (
-    !locationCode ||
     !locationName ||
     !locationType ||
     !warehouseId
   ) {
     throw new BadRequestError(
-      "Location code, name, type, and warehouse are required",
+      "Location name, type, and warehouse are required",
     );
   }
 
@@ -109,6 +108,12 @@ export class LocationService {
 
   async createLocation(payload: LocationPayload) {
     const clean = await cleanPayload(payload);
+    clean.location_code =
+      clean.location_code ||
+      await locationRepository.generateLocationCode(
+        clean.location_type,
+        clean.warehouse_id,
+      );
 
     return locationRepository.create(clean);
   }

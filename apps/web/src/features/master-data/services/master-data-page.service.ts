@@ -56,7 +56,7 @@ export type WarehouseRow = {
 };
 
 export type WarehousePayload = {
-  warehouse_code: string;
+  warehouse_code?: string;
   warehouse_name: string;
   address?: string | null;
   is_active?: boolean;
@@ -74,7 +74,7 @@ export type LocationRow = {
 };
 
 export type LocationPayload = {
-  location_code: string;
+  location_code?: string;
   location_name: string;
   location_type: string;
   warehouse_id: string;

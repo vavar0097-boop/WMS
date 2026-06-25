@@ -9,6 +9,50 @@ export type UnitRow = {
 };
 
 export class UnitRepository {
+  async seedDefaults() {
+    const { error } = await supabase
+      .from("units")
+      .upsert(
+        [
+          {
+            code: "PCS",
+            name: "Pieces",
+          },
+          {
+            code: "BOX",
+            name: "Box",
+          },
+          {
+            code: "DUS",
+            name: "Dus",
+          },
+          {
+            code: "KG",
+            name: "Kilogram",
+          },
+          {
+            code: "GRAM",
+            name: "Gram",
+          },
+          {
+            code: "LITER",
+            name: "Liter",
+          },
+          {
+            code: "ML",
+            name: "Milliliter",
+          },
+        ],
+        {
+          onConflict: "code",
+        }
+      );
+
+    if (error) {
+      throw error;
+    }
+  }
+
   async findAll(params?: {
     search?: string;
     limit?: number;

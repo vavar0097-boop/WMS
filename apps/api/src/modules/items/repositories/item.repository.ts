@@ -7,18 +7,48 @@ export class ItemRepository {
   async generateItemCode(
     prefix: string
   ): Promise<string> {
-    const { data, error } = await db.rpc(
-      "generate_item_code",
-      {
-        p_prefix: prefix,
+    const normalizedPrefix = prefix.toUpperCase();
+
+    try {
+      const { data, error } = await db.rpc(
+        "generate_item_code",
+        {
+          p_prefix: normalizedPrefix,
+        }
+      );
+
+      if (error) {
+        throw error;
       }
-    );
 
-    if (error) {
-      throw error;
+      return data as string;
+    } catch {
+      const { data, error } = await db
+        .from("items")
+        .select("item_code")
+        .ilike("item_code", `${normalizedPrefix}-%`)
+        .order("item_code", {
+          ascending: false,
+        })
+        .limit(1000);
+
+      if (error) {
+        throw error;
+      }
+
+      const nextNumber =
+        ((data ?? [])
+          .map((row) => {
+            const value = String(row.item_code ?? "");
+            const match = value.match(/-(\d+)$/);
+
+            return match ? Number(match[1]) : 0;
+          })
+          .filter((value) => Number.isFinite(value))
+          .sort((a, b) => b - a)[0] ?? 0) + 1;
+
+      return `${normalizedPrefix}-${String(nextNumber).padStart(6, "0")}`;
     }
-
-    return data as string;
   }
 
   async findUnitById(
