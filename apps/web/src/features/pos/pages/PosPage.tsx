@@ -4,6 +4,7 @@ import {
   Check,
   CreditCard,
   LogOut,
+  Maximize2,
   Menu,
   Minus,
   Plus,
@@ -336,6 +337,22 @@ export function PosPage() {
     setInstallPrompt(null);
   }
 
+  async function handleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await document.documentElement.requestFullscreen();
+    } catch {
+      toast.error(
+        "Fullscreen unavailable",
+        "Install the POS app for the cleanest fullscreen mode.",
+      );
+    }
+  }
+
   async function handleOpenSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -590,7 +607,7 @@ export function PosPage() {
               <button
                 type="button"
                 onClick={handleInstall}
-                className="hidden h-10 items-center gap-2 rounded-lg border border-emerald-200 px-3 text-sm font-semibold text-emerald-800 md:inline-flex"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 px-3 text-sm font-semibold text-emerald-800"
               >
                 <Boxes size={16} />
                 Install
@@ -684,6 +701,24 @@ export function PosPage() {
                   <Power size={18} />
                   Close Shift
                 </button>
+                <button
+                  type="button"
+                  onClick={handleFullscreen}
+                  className="flex h-12 items-center gap-3 rounded-lg border border-slate-200 px-3 text-sm font-bold"
+                >
+                  <Maximize2 size={18} />
+                  Fullscreen
+                </button>
+                {installPrompt ? (
+                  <button
+                    type="button"
+                    onClick={handleInstall}
+                    className="flex h-12 items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-bold text-emerald-800"
+                  >
+                    <Boxes size={18} />
+                    Install App
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={handleLogout}
