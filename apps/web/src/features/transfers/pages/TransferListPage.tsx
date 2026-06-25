@@ -1,5 +1,5 @@
-import { Plus, RefreshCw } from "lucide-react";
-import { useEffect } from "react";
+import { Plus, RefreshCw, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { formatDateTime, formatText } from "@/lib/utils";
@@ -18,6 +18,8 @@ import { TransferStatusBadge } from "../components/TransferStatusBadge";
 import { useTransferStore } from "../stores/transfer.store";
 
 export function TransferListPage() {
+  const [query, setQuery] = useState("");
+
   const {
     transfers,
     loadingList,
@@ -46,6 +48,29 @@ export function TransferListPage() {
   const totalCompleted = transfers.filter(
     (transfer) => transfer.status === "RECEIVED",
   ).length;
+
+  const filteredTransfers = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (!normalizedQuery) return transfers;
+
+    return transfers.filter((transfer) =>
+      [
+        transfer.transfer_no,
+        transfer.status,
+        transfer.source_location_code,
+        transfer.source_location_name,
+        transfer.destination_location_code,
+        transfer.destination_location_name,
+        transfer.source_warehouse_code,
+        transfer.destination_warehouse_code,
+      ]
+        .filter(Boolean)
+        .some((value) =>
+          String(value).toLowerCase().includes(normalizedQuery),
+        ),
+    );
+  }, [query, transfers]);
 
   async function handleRefresh() {
     try {
@@ -125,10 +150,28 @@ export function TransferListPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Transfer List</CardTitle>
-          <CardDescription>
-            All transfer documents from backend API.
-          </CardDescription>
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div>
+              <CardTitle>Transfer List</CardTitle>
+              <CardDescription>
+                {filteredTransfers.length} of {transfers.length} transfer
+                {transfers.length === 1 ? "" : "s"} shown.
+              </CardDescription>
+            </div>
+
+            <div className="relative w-full md:max-w-sm">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                placeholder="Search transfers"
+              />
+            </div>
+          </div>
         </CardHeader>
 
         <CardContent className="p-0">
@@ -167,7 +210,7 @@ export function TransferListPage() {
                       Loading transfers...
                     </td>
                   </tr>
-                ) : transfers.length === 0 ? (
+                ) : filteredTransfers.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -177,7 +220,7 @@ export function TransferListPage() {
                     </td>
                   </tr>
                 ) : (
-                  transfers.map((transfer) => (
+                  filteredTransfers.map((transfer) => (
                     <tr
                       key={transfer.id}
                       className="bg-white transition hover:bg-slate-50"

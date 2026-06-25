@@ -323,7 +323,7 @@ export function StockPage() {
       : ledgers.length === 0;
 
   return (
-    <div className="space-y-6 p-4 lg:p-8">
+    <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-950">
@@ -480,47 +480,70 @@ export function StockPage() {
               </CardDescription>
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">
-                      <th className="px-3 py-3 font-semibold">
+                  <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-5 py-3 font-semibold">
                         Item
                       </th>
-                      <th className="px-3 py-3 font-semibold">
+                      <th className="px-5 py-3 font-semibold">
                         Location
                       </th>
                       {view === "ledger" ? (
-                        <th className="px-3 py-3 font-semibold">
+                        <th className="px-5 py-3 font-semibold">
                           Movement
                         </th>
                       ) : null}
-                      <th className="px-3 py-3 text-right font-semibold">
+                      <th className="px-5 py-3 text-right font-semibold">
                         Quantity
                       </th>
                       {view === "ledger" ? (
-                        <th className="px-3 py-3 font-semibold">
+                        <th className="px-5 py-3 font-semibold">
                           Reference
                         </th>
                       ) : null}
-                      <th className="px-3 py-3 font-semibold">
+                      <th className="px-5 py-3 font-semibold">
                         Updated
                       </th>
                     </tr>
                   </thead>
 
-                  <tbody>
-                    {view === "current"
-                      ? currentStocks.map((stock, index) => (
+                  <tbody className="divide-y divide-slate-100">
+                    {loadingStocks ? (
+                      <tr>
+                        <td
+                          colSpan={view === "current" ? 4 : 6}
+                          className="px-5 py-12 text-center text-sm text-slate-500"
+                        >
+                          Loading stock data...
+                        </td>
+                      </tr>
+                    ) : rowsAreEmpty ? (
+                      <tr>
+                        <td
+                          colSpan={view === "current" ? 4 : 6}
+                          className="px-5 py-12 text-center"
+                        >
+                          <p className="font-semibold text-slate-900">
+                            No stock data found
+                          </p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Adjust the filters or record an initial stock.
+                          </p>
+                        </td>
+                      </tr>
+                    ) : view === "current" ? (
+                      currentStocks.map((stock, index) => (
                           <tr
                             key={
                               stock.id ||
                               `${stock.item_id}-${stock.location_id}-${index}`
                             }
-                            className="border-b border-slate-100"
+                            className="bg-white transition hover:bg-slate-50"
                           >
-                            <td className="px-3 py-4">
+                            <td className="px-5 py-4">
                               <p className="font-semibold text-slate-900">
                                 {stock.items?.item_code || "-"}
                               </p>
@@ -529,7 +552,7 @@ export function StockPage() {
                                   stock.item_id}
                               </p>
                             </td>
-                            <td className="px-3 py-4">
+                            <td className="px-5 py-4">
                               <p className="font-semibold text-slate-900">
                                 {stock.locations?.code || "-"}
                               </p>
@@ -538,24 +561,25 @@ export function StockPage() {
                                   stock.location_id}
                               </p>
                             </td>
-                            <td className="px-3 py-4 text-right text-base font-bold text-slate-950">
+                            <td className="px-5 py-4 text-right text-base font-bold text-slate-950">
                               {formatQuantityWithUnit(
-                                  stock.quantity,
-                                  stock.item_id,
-                                  stock.items,
-                                )}
+                                stock.quantity,
+                                stock.item_id,
+                                stock.items,
+                              )}
                             </td>
-                            <td className="px-3 py-4 text-slate-500">
+                            <td className="px-5 py-4 text-slate-500">
                               {formatDate(stock.updated_at)}
                             </td>
                           </tr>
                         ))
-                      : ledgers.map((ledger) => (
+                    ) : (
+                      ledgers.map((ledger) => (
                           <tr
                             key={ledger.id}
-                            className="border-b border-slate-100"
+                            className="bg-white transition hover:bg-slate-50"
                           >
-                            <td className="px-3 py-4">
+                            <td className="px-5 py-4">
                               <p className="font-semibold text-slate-900">
                                 {ledger.items?.item_code || "-"}
                               </p>
@@ -564,7 +588,7 @@ export function StockPage() {
                                   ledger.item_id}
                               </p>
                             </td>
-                            <td className="px-3 py-4">
+                            <td className="px-5 py-4">
                               <p className="font-semibold text-slate-900">
                                 {ledger.locations?.code || "-"}
                               </p>
@@ -573,7 +597,7 @@ export function StockPage() {
                                   ledger.location_id}
                               </p>
                             </td>
-                            <td className="px-3 py-4">
+                            <td className="px-5 py-4">
                               <span
                                 className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${movementTone(
                                   ledger.movement_type,
@@ -585,14 +609,14 @@ export function StockPage() {
                                   : ""}
                               </span>
                             </td>
-                            <td className="px-3 py-4 text-right text-base font-bold text-slate-950">
+                            <td className="px-5 py-4 text-right text-base font-bold text-slate-950">
                               {formatQuantityWithUnit(
-                                  ledger.quantity,
-                                  ledger.item_id,
-                                  ledger.items,
-                                )}
+                                ledger.quantity,
+                                ledger.item_id,
+                                ledger.items,
+                              )}
                             </td>
-                            <td className="px-3 py-4">
+                            <td className="px-5 py-4">
                               <p className="font-medium text-slate-700">
                                 {ledger.reference_type || "-"}
                               </p>
@@ -602,33 +626,17 @@ export function StockPage() {
                                   "-"}
                               </p>
                             </td>
-                            <td className="px-3 py-4 text-slate-500">
+                            <td className="px-5 py-4 text-slate-500">
                               {formatDate(ledger.created_at)}
                             </td>
                           </tr>
-                        ))}
+                        ))
+                    )}
                   </tbody>
                 </table>
               </div>
 
-              {loadingStocks ? (
-                <div className="py-12 text-center text-sm text-slate-500">
-                  Loading stock data...
-                </div>
-              ) : null}
-
-              {!loadingStocks && rowsAreEmpty ? (
-                <div className="py-12 text-center">
-                  <p className="font-semibold text-slate-900">
-                    No stock data found
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Adjust the filters or record an initial stock.
-                  </p>
-                </div>
-              ) : null}
-
-              <div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-4">
+              <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
                 <p className="text-sm text-slate-500">
                   Page {pagination.page} of{" "}
                   {Math.max(pagination.totalPages, 1)}
@@ -806,8 +814,8 @@ export function StockPage() {
               </div>
 
               <p className="mt-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-  Unit: {getUnitLabel(movementItemId) || "-"}
-</p>
+                Unit: {getUnitLabel(movementItemId) || "-"}
+              </p>
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Remarks
