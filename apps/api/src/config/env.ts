@@ -1,6 +1,17 @@
+import path from "node:path";
+
 import dotenv from "dotenv";
 
-dotenv.config();
+const repoRoot = path.resolve(__dirname, "../../../..");
+const apiRoot = path.resolve(__dirname, "../..");
+
+dotenv.config({
+  path: path.join(repoRoot, ".env"),
+});
+dotenv.config({
+  path: path.join(apiRoot, ".env"),
+  override: true,
+});
 
 function getEnv(key: string): string {
   const value = process.env[key];

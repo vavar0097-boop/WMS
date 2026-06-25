@@ -13,4 +13,22 @@ router.get(
   warehouseController.getWarehouses.bind(warehouseController),
 );
 
+router.post(
+  "/",
+  authMiddleware,
+  warehouseController.createWarehouse.bind(warehouseController),
+);
+
+router.put(
+  "/:id",
+  authMiddleware,
+  warehouseController.updateWarehouse.bind(warehouseController),
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  warehouseController.deleteWarehouse.bind(warehouseController),
+);
+
 export default router;

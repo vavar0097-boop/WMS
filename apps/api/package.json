@@ -11,7 +11,10 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "jest",
-    "create-admin": "tsx scripts/create-admin.ts"
+    "create-admin": "tsx scripts/create-admin.ts",
+    "db:status": "tsx scripts/db.ts status",
+    "db:baseline": "tsx scripts/db.ts baseline",
+    "db:migrate": "tsx scripts/db.ts migrate"
   },
   "keywords": [],
   "author": "",
@@ -28,6 +31,7 @@
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.11.0",
+    "pg": "^8.22.0",
     "winston": "^3.19.0",
     "ws": "^8.21.0",
     "zod": "^4.4.3"
@@ -42,6 +46,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/node": "^25.9.3",
+    "@types/pg": "^8.20.0",
     "@types/ws": "^8.18.1",
     "jest": "^30.4.2",
     "supertest": "^7.2.2",

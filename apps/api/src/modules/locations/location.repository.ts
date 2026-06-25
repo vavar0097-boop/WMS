@@ -11,6 +11,15 @@ export type LocationRow = {
   created_at: string | null;
 };
 
+export type LocationPayload = {
+  location_code: string;
+  location_name: string;
+  location_type: string;
+  warehouse_id: string;
+  parent_id?: string | null;
+  is_active?: boolean;
+};
+
 export class LocationRepository {
   async findAll(params?: {
     search?: string;
@@ -61,5 +70,122 @@ export class LocationRepository {
     }
 
     return (data ?? []) as LocationRow[];
+  }
+
+  async findById(id: string) {
+    const { data, error } = await supabase
+      .from("locations")
+      .select(`
+        id,
+        location_code:code,
+        location_name:name,
+        location_type:level,
+        warehouse_id,
+        parent_id,
+        is_active,
+        created_at
+      `)
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      return null;
+    }
+
+    return data as LocationRow;
+  }
+
+  async create(payload: LocationPayload) {
+    const { data, error } = await supabase
+      .from("locations")
+      .insert({
+        code: payload.location_code,
+        name: payload.location_name,
+        level: payload.location_type,
+        warehouse_id: payload.warehouse_id,
+        parent_id: payload.parent_id ?? null,
+        is_active: payload.is_active ?? true,
+      })
+      .select(`
+        id,
+        location_code:code,
+        location_name:name,
+        location_type:level,
+        warehouse_id,
+        parent_id,
+        is_active,
+        created_at
+      `)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data as LocationRow;
+  }
+
+  async update(
+    id: string,
+    payload: Partial<LocationPayload>,
+  ) {
+    const updatePayload: Record<string, unknown> = {};
+
+    if (payload.location_code !== undefined) {
+      updatePayload.code = payload.location_code;
+    }
+
+    if (payload.location_name !== undefined) {
+      updatePayload.name = payload.location_name;
+    }
+
+    if (payload.location_type !== undefined) {
+      updatePayload.level = payload.location_type;
+    }
+
+    if (payload.warehouse_id !== undefined) {
+      updatePayload.warehouse_id = payload.warehouse_id;
+    }
+
+    if (payload.parent_id !== undefined) {
+      updatePayload.parent_id = payload.parent_id;
+    }
+
+    if (payload.is_active !== undefined) {
+      updatePayload.is_active = payload.is_active;
+    }
+
+    const { data, error } = await supabase
+      .from("locations")
+      .update(updatePayload)
+      .eq("id", id)
+      .select(`
+        id,
+        location_code:code,
+        location_name:name,
+        location_type:level,
+        warehouse_id,
+        parent_id,
+        is_active,
+        created_at
+      `)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data as LocationRow;
+  }
+
+  async delete(id: string) {
+    const { error } = await supabase
+      .from("locations")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      throw error;
+    }
   }
 }

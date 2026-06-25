@@ -55,6 +55,13 @@ export type WarehouseRow = {
   created_at?: string | null;
 };
 
+export type WarehousePayload = {
+  warehouse_code: string;
+  warehouse_name: string;
+  address?: string | null;
+  is_active?: boolean;
+};
+
 export type LocationRow = {
   id: string;
   location_code: string;
@@ -64,6 +71,39 @@ export type LocationRow = {
   parent_id?: string | null;
   is_active?: boolean | null;
   created_at?: string | null;
+};
+
+export type LocationPayload = {
+  location_code: string;
+  location_name: string;
+  location_type: string;
+  warehouse_id: string;
+  parent_id?: string | null;
+  is_active?: boolean;
+};
+
+export type RoleRow = {
+  id: string;
+  name: string;
+  description?: string | null;
+};
+
+export type UserRow = {
+  id: string;
+  username: string;
+  full_name: string;
+  is_active?: boolean | null;
+  role_id?: string | null;
+  role_name?: string | null;
+  created_at?: string | null;
+};
+
+export type UserPayload = {
+  username: string;
+  full_name: string;
+  password?: string;
+  role_id: string;
+  is_active?: boolean;
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -179,6 +219,54 @@ export const masterDataPageService = {
     return normalizeArray<LocationRow>(response.data);
   },
 
+  async createWarehouse(payload: WarehousePayload) {
+    const response = await apiClient.post("/warehouses", payload);
+
+    return response.data;
+  },
+
+  async updateWarehouse(
+    id: string,
+    payload: Partial<WarehousePayload>,
+  ) {
+    const response = await apiClient.put(
+      `/warehouses/${id}`,
+      payload,
+    );
+
+    return response.data;
+  },
+
+  async deleteWarehouse(id: string) {
+    const response = await apiClient.delete(`/warehouses/${id}`);
+
+    return response.data;
+  },
+
+  async createLocation(payload: LocationPayload) {
+    const response = await apiClient.post("/locations", payload);
+
+    return response.data;
+  },
+
+  async updateLocation(
+    id: string,
+    payload: Partial<LocationPayload>,
+  ) {
+    const response = await apiClient.put(
+      `/locations/${id}`,
+      payload,
+    );
+
+    return response.data;
+  },
+
+  async deleteLocation(id: string) {
+    const response = await apiClient.delete(`/locations/${id}`);
+
+    return response.data;
+  },
+
   async getUnits(params?: {
     search?: string;
     limit?: number;
@@ -207,6 +295,44 @@ export const masterDataPageService = {
 
   async deleteItem(id: string) {
     const response = await apiClient.delete(`/items/${id}`);
+
+    return response.data;
+  },
+
+  async getUsers(params?: {
+    search?: string;
+    limit?: number;
+  }) {
+    const response = await apiClient.get("/users", {
+      params: {
+        limit: params?.limit ?? 100,
+        ...(params?.search ? { search: params.search } : {}),
+      },
+    });
+
+    return normalizeArray<UserRow>(response.data);
+  },
+
+  async getRoles() {
+    const response = await apiClient.get("/users/roles");
+
+    return normalizeArray<RoleRow>(response.data);
+  },
+
+  async createUser(payload: UserPayload) {
+    const response = await apiClient.post("/users", payload);
+
+    return response.data;
+  },
+
+  async updateUser(id: string, payload: Partial<UserPayload>) {
+    const response = await apiClient.put(`/users/${id}`, payload);
+
+    return response.data;
+  },
+
+  async deleteUser(id: string) {
+    const response = await apiClient.delete(`/users/${id}`);
 
     return response.data;
   },

@@ -1,6 +1,35 @@
 import { WarehouseRepository } from "./warehouse.repository";
+import {
+  BadRequestError,
+  NotFoundError,
+} from "../../utils/errors";
 
 const warehouseRepository = new WarehouseRepository();
+
+type WarehousePayload = {
+  warehouse_code: string;
+  warehouse_name: string;
+  address?: string | null;
+  is_active?: boolean;
+};
+
+function cleanPayload(payload: WarehousePayload) {
+  const warehouseCode = payload.warehouse_code?.trim();
+  const warehouseName = payload.warehouse_name?.trim();
+
+  if (!warehouseCode || !warehouseName) {
+    throw new BadRequestError(
+      "Warehouse code and name are required",
+    );
+  }
+
+  return {
+    warehouse_code: warehouseCode,
+    warehouse_name: warehouseName,
+    address: payload.address?.trim() || null,
+    is_active: payload.is_active ?? true,
+  };
+}
 
 export class WarehouseService {
   async getWarehouses(params?: {
@@ -19,5 +48,45 @@ export class WarehouseService {
       created_at: warehouse.created_at,
       updated_at: warehouse.updated_at,
     }));
+  }
+
+  async createWarehouse(payload: WarehousePayload) {
+    return warehouseRepository.create(cleanPayload(payload));
+  }
+
+  async updateWarehouse(
+    id: string,
+    payload: Partial<WarehousePayload>,
+  ) {
+    const existing = await warehouseRepository.findById(id);
+
+    if (!existing) {
+      throw new NotFoundError("Warehouse not found");
+    }
+
+    return warehouseRepository.update(id, {
+      ...(payload.warehouse_code !== undefined
+        ? { warehouse_code: payload.warehouse_code.trim() }
+        : {}),
+      ...(payload.warehouse_name !== undefined
+        ? { warehouse_name: payload.warehouse_name.trim() }
+        : {}),
+      ...(payload.address !== undefined
+        ? { address: payload.address?.trim() || null }
+        : {}),
+      ...(payload.is_active !== undefined
+        ? { is_active: payload.is_active }
+        : {}),
+    });
+  }
+
+  async deleteWarehouse(id: string) {
+    const existing = await warehouseRepository.findById(id);
+
+    if (!existing) {
+      throw new NotFoundError("Warehouse not found");
+    }
+
+    await warehouseRepository.delete(id);
   }
 }

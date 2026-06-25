@@ -31,6 +31,23 @@ async function main() {
     process.exit(1);
   }
 
+  const { error: seedRoleError } = await db
+    .from("roles")
+    .upsert(
+      {
+        name: "ADMIN",
+        description: "Full system access",
+      },
+      {
+        onConflict: "name",
+      }
+    );
+
+  if (seedRoleError) {
+    console.error(seedRoleError);
+    process.exit(1);
+  }
+
   const { data: role, error: roleError } = await db
     .from("roles")
     .select("id")

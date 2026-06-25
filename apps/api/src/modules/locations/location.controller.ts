@@ -47,4 +47,63 @@ export class LocationController {
       next(error);
     }
   }
+
+  async createLocation(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const location =
+        await locationService.createLocation(req.body);
+
+      res.status(201).json({
+        success: true,
+        message: "Location created successfully",
+        data: location,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateLocation(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const location =
+        await locationService.updateLocation(
+          String(req.params.id),
+          req.body,
+        );
+
+      res.status(200).json({
+        success: true,
+        message: "Location updated successfully",
+        data: location,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteLocation(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      await locationService.deleteLocation(String(req.params.id));
+
+      res.status(200).json({
+        success: true,
+        message: "Location deleted successfully",
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
