@@ -28,6 +28,8 @@ export const env = {
 
   PORT: Number(process.env.PORT ?? 3000),
 
+  CLIENT_ORIGIN: process.env.CLIENT_ORIGIN ?? "",
+
   SUPABASE_URL: getEnv("SUPABASE_URL"),
 
   SUPABASE_SERVICE_ROLE_KEY: getEnv(

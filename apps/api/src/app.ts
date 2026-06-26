@@ -6,6 +6,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 
 import { logger } from "./config/logger";
+import { env } from "./config/env";
 import { errorMiddleware } from "./middleware/error.middleware";
 import cashierSessionRoutes from "./modules/cashier-sessions/routes/cashier-session.route";
 import itemRoutes from "./modules/items/routes/item.route";
@@ -21,10 +22,14 @@ import warehouseRoutes from "./modules/warehouses/warehouse.routes";
 import authRoutes from "./routes/auth.routes";
 
 const app = express();
+const allowedOrigins = env.CLIENT_ORIGIN
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(
   cors({
-    origin: true,
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
     credentials: true,
   }),
 );

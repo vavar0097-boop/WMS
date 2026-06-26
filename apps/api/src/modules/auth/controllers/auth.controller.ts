@@ -9,7 +9,15 @@ import {
 import {
   successResponse,
 } from "../../../utils/response";
+import { env } from "../../../config/env";
 import { AuthService } from "../services/auth.service";
+
+const isProduction = env.NODE_ENV === "production";
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: isProduction ? "none" as const : "lax" as const,
+  secure: isProduction,
+};
 
 export class AuthController {
   private service = new AuthService();
@@ -31,21 +39,13 @@ export class AuthController {
     res.cookie(
       "access_token",
       result.accessToken,
-      {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: false,
-      }
+      cookieOptions
     );
 
     res.cookie(
       "refresh_token",
       result.refreshToken,
-      {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: false,
-      }
+      cookieOptions
     );
 
     return successResponse(
@@ -70,8 +70,8 @@ export class AuthController {
     _req: Request,
     res: Response
   ) => {
-    res.clearCookie("access_token");
-    res.clearCookie("refresh_token");
+    res.clearCookie("access_token", cookieOptions);
+    res.clearCookie("refresh_token", cookieOptions);
 
     return successResponse(
       res,
@@ -98,11 +98,7 @@ export class AuthController {
     res.cookie(
       "access_token",
       accessToken,
-      {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: false,
-      }
+      cookieOptions
     );
 
     return successResponse(
