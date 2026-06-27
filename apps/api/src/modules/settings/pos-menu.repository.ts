@@ -11,6 +11,14 @@ export type PosMenuPayload = {
   sort_order?: number;
 };
 
+export type PosMenuBomComponentPayload = {
+  component_item_id: string;
+  quantity_per_menu: number;
+  tolerance_percent?: number;
+  is_fixed_quantity?: boolean;
+  notes?: string | null;
+};
+
 export class PosMenuRepository {
   async findAll(params?: {
     search?: string;
@@ -28,6 +36,19 @@ export class PosMenuRepository {
           id,
           item_code,
           item_name
+        ),
+        bom_components:pos_menu_item_bom_components (
+          id,
+          component_item_id,
+          quantity_per_menu,
+          tolerance_percent,
+          is_fixed_quantity,
+          notes,
+          component_item:component_item_id (
+            id,
+            item_code,
+            item_name
+          )
         )
       `)
       .order("sort_order", {
@@ -87,5 +108,81 @@ export class PosMenuRepository {
       .eq("id", id);
 
     if (error) throw error;
+  }
+
+  async findBom(menuItemId: string) {
+    const { data, error } = await supabase
+      .from("pos_menu_item_bom_components")
+      .select(`
+        id,
+        menu_item_id,
+        component_item_id,
+        quantity_per_menu,
+        tolerance_percent,
+        is_fixed_quantity,
+        notes,
+        component_item:component_item_id (
+          id,
+          item_code,
+          item_name
+        )
+      `)
+      .eq("menu_item_id", menuItemId)
+      .order("created_at", {
+        ascending: true,
+      });
+
+    if (error) throw error;
+
+    return data ?? [];
+  }
+
+  async replaceBom(
+    menuItemId: string,
+    components: PosMenuBomComponentPayload[],
+  ) {
+    const { error: deleteError } = await supabase
+      .from("pos_menu_item_bom_components")
+      .delete()
+      .eq("menu_item_id", menuItemId);
+
+    if (deleteError) throw deleteError;
+
+    if (components.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("pos_menu_item_bom_components")
+      .insert(
+        components.map((component) => ({
+          menu_item_id: menuItemId,
+          component_item_id: component.component_item_id,
+          quantity_per_menu: component.quantity_per_menu,
+          tolerance_percent: component.is_fixed_quantity
+            ? 0
+            : component.tolerance_percent ?? 3,
+          is_fixed_quantity: component.is_fixed_quantity ?? false,
+          notes: component.notes ?? null,
+        })),
+      )
+      .select(`
+        id,
+        menu_item_id,
+        component_item_id,
+        quantity_per_menu,
+        tolerance_percent,
+        is_fixed_quantity,
+        notes,
+        component_item:component_item_id (
+          id,
+          item_code,
+          item_name
+        )
+      `);
+
+    if (error) throw error;
+
+    return data ?? [];
   }
 }

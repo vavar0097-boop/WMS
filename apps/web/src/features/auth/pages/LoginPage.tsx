@@ -158,7 +158,7 @@ export function LoginPage() {
                       type="text"
                       value={username}
                       autoComplete="username"
-                      placeholder="admin"
+                      placeholder="Enter your username"
                       className="pl-9"
                       disabled={isLoggingIn}
                       onChange={(event) =>
@@ -181,7 +181,7 @@ export function LoginPage() {
                       type="password"
                       value={password}
                       autoComplete="current-password"
-                      placeholder="admin123"
+                      placeholder="Enter your password"
                       className="pl-9"
                       disabled={isLoggingIn}
                       onChange={(event) =>

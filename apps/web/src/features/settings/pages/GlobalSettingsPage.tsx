@@ -1,4 +1,5 @@
 import {
+  FlaskConical,
   Pencil,
   Plus,
   RefreshCw,
@@ -16,6 +17,7 @@ import { getApiErrorMessage } from "@/shared/lib/api/error";
 import { toast } from "@/shared/ui/toast";
 import {
   PosMenuItem,
+  PosMenuBomComponent,
   PosMenuPayload,
   posSettingsService,
 } from "../services/pos-settings.service";
@@ -31,6 +33,14 @@ type MenuForm = {
   sort_order: string;
 };
 
+type BomFormRow = {
+  component_item_id: string;
+  quantity_per_menu: string;
+  tolerance_percent: string;
+  is_fixed_quantity: boolean;
+  notes: string;
+};
+
 const emptyForm: MenuForm = {
   item_id: "",
   menu_code: "",
@@ -40,6 +50,14 @@ const emptyForm: MenuForm = {
   is_visible: true,
   is_available: true,
   sort_order: "0",
+};
+
+const emptyBomRow: BomFormRow = {
+  component_item_id: "",
+  quantity_per_menu: "1",
+  tolerance_percent: "3",
+  is_fixed_quantity: false,
+  notes: "",
 };
 
 function money(value: number | string) {
@@ -63,6 +81,34 @@ function toPayload(form: MenuForm): PosMenuPayload {
   };
 }
 
+function toBomRows(components: PosMenuBomComponent[]): BomFormRow[] {
+  return components.length > 0
+    ? components.map((component) => ({
+        component_item_id: component.component_item_id,
+        quantity_per_menu: String(component.quantity_per_menu),
+        tolerance_percent: String(component.tolerance_percent ?? 3),
+        is_fixed_quantity: component.is_fixed_quantity,
+        notes: component.notes || "",
+      }))
+    : [{ ...emptyBomRow }];
+}
+
+function toBomPayload(rows: BomFormRow[]) {
+  return {
+    components: rows
+      .filter((row) => row.component_item_id)
+      .map((row) => ({
+        component_item_id: row.component_item_id,
+        quantity_per_menu: Number(row.quantity_per_menu),
+        tolerance_percent: row.is_fixed_quantity
+          ? 0
+          : Number(row.tolerance_percent),
+        is_fixed_quantity: row.is_fixed_quantity,
+        notes: row.notes.trim() || null,
+      })),
+  };
+}
+
 export function GlobalSettingsPage() {
   const [menuItems, setMenuItems] = useState<PosMenuItem[]>([]);
   const [items, setItems] = useState<ItemRow[]>([]);
@@ -70,9 +116,15 @@ export function GlobalSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editing, setEditing] = useState<PosMenuItem | null>(null);
+  const [bomEditing, setBomEditing] = useState<PosMenuItem | null>(null);
+  const [bomRows, setBomRows] = useState<BomFormRow[]>([
+    { ...emptyBomRow },
+  ]);
   const [form, setForm] = useState<MenuForm>(emptyForm);
   const [modalOpen, setModalOpen] = useState(false);
+  const [bomModalOpen, setBomModalOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [isBomSaving, setIsBomSaving] = useState(false);
 
   useEffect(() => {
     masterDataPageService
@@ -148,6 +200,86 @@ export function GlobalSettingsPage() {
     setEditing(null);
     setForm(emptyForm);
     setModalOpen(false);
+  }
+
+  async function openBomModal(row: PosMenuItem) {
+    setBomEditing(row);
+    setBomModalOpen(true);
+    setBomRows(toBomRows(row.bom_components ?? []));
+
+    try {
+      const components = await posSettingsService.getBom(row.id);
+      setBomRows(toBomRows(components));
+    } catch (error) {
+      toast.error("BOM failed to load", getApiErrorMessage(error));
+    }
+  }
+
+  function closeBomModal() {
+    if (isBomSaving) return;
+    setBomEditing(null);
+    setBomRows([{ ...emptyBomRow }]);
+    setBomModalOpen(false);
+  }
+
+  function updateBomRow(
+    index: number,
+    patch: Partial<BomFormRow>,
+  ) {
+    setBomRows((current) =>
+      current.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, ...patch } : row,
+      ),
+    );
+  }
+
+  function addBomRow() {
+    setBomRows((current) => [...current, { ...emptyBomRow }]);
+  }
+
+  function removeBomRow(index: number) {
+    setBomRows((current) =>
+      current.length === 1
+        ? [{ ...emptyBomRow }]
+        : current.filter((_, rowIndex) => rowIndex !== index),
+    );
+  }
+
+  async function handleBomSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!bomEditing) return;
+
+    const payload = toBomPayload(bomRows);
+
+    const invalid = payload.components.some(
+      (component) =>
+        !component.component_item_id ||
+        component.quantity_per_menu <= 0 ||
+        component.tolerance_percent < 0 ||
+        component.tolerance_percent > 3,
+    );
+
+    if (invalid) {
+      toast.error(
+        "BOM form incomplete",
+        "Component, quantity, and tolerance 0-3% are required.",
+      );
+      return;
+    }
+
+    setIsBomSaving(true);
+
+    try {
+      await posSettingsService.replaceBom(bomEditing.id, payload);
+      toast.success("BOM saved", bomEditing.menu_name);
+      closeBomModal();
+      setReloadKey((value) => value + 1);
+    } catch (error) {
+      toast.error("BOM save failed", getApiErrorMessage(error));
+    } finally {
+      setIsBomSaving(false);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -306,6 +438,14 @@ export function GlobalSettingsPage() {
                     </td>
                     <td className="whitespace-nowrap px-5 py-4 text-right">
                       <div className="inline-flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openBomModal(row)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-200 text-emerald-700 transition hover:bg-emerald-50"
+                          aria-label="Edit BOM"
+                        >
+                          <FlaskConical size={15} />
+                        </button>
                         <button
                           type="button"
                           onClick={() => openEditModal(row)}
@@ -472,6 +612,152 @@ export function GlobalSettingsPage() {
                 >
                   {isSaving ? "Saving..." : "Save POS Menu"}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {bomModalOpen && bomEditing ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+          <div className="w-full max-w-4xl rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-950">
+                  BOM - {bomEditing.menu_name}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Use tolerance 1-3% for flexible recipes. Set fixed for exact pack items like cups and sachets.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeBomModal}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+                aria-label="Close BOM form"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleBomSubmit} className="space-y-4 p-5">
+              <div className="space-y-3">
+                {bomRows.map((row, index) => (
+                  <div
+                    key={index}
+                    className="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[1.6fr_0.6fr_0.6fr_0.8fr_auto]"
+                  >
+                    <select
+                      value={row.component_item_id}
+                      onChange={(event) =>
+                        updateBomRow(index, {
+                          component_item_id: event.target.value,
+                        })
+                      }
+                      className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none"
+                    >
+                      <option value="">Select component item</option>
+                      {items.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.item_code} - {item.item_name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="number"
+                      min="0.0001"
+                      step="0.0001"
+                      value={row.quantity_per_menu}
+                      onChange={(event) =>
+                        updateBomRow(index, {
+                          quantity_per_menu: event.target.value,
+                        })
+                      }
+                      className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none"
+                      placeholder="Qty"
+                    />
+
+                    <input
+                      type="number"
+                      min="0"
+                      max="3"
+                      step="0.1"
+                      value={row.tolerance_percent}
+                      disabled={row.is_fixed_quantity}
+                      onChange={(event) =>
+                        updateBomRow(index, {
+                          tolerance_percent: event.target.value,
+                        })
+                      }
+                      className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none disabled:bg-slate-50"
+                      placeholder="Tol %"
+                    />
+
+                    <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={row.is_fixed_quantity}
+                        onChange={(event) =>
+                          updateBomRow(index, {
+                            is_fixed_quantity: event.target.checked,
+                            tolerance_percent: event.target.checked
+                              ? "0"
+                              : row.tolerance_percent || "3",
+                          })
+                        }
+                      />
+                      Fixed
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => removeBomRow(index)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 text-rose-600 transition hover:bg-rose-50"
+                      aria-label="Remove BOM component"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+
+                    <input
+                      value={row.notes}
+                      onChange={(event) =>
+                        updateBomRow(index, {
+                          notes: event.target.value,
+                        })
+                      }
+                      className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none md:col-span-5"
+                      placeholder="Notes"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col justify-between gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={addBomRow}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700"
+                >
+                  <Plus size={16} />
+                  Add Component
+                </button>
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={closeBomModal}
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isBomSaving}
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {isBomSaving ? "Saving..." : "Save BOM"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

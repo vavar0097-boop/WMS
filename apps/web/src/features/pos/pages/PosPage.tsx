@@ -161,7 +161,7 @@ export function PosPage() {
       (location) =>
         location.id ===
         (session?.location_id || selectedLocationId),
-    )?.location_name || "Pilih Stan";
+    )?.location_name || "Pilih Outlet";
   const cashierName =
     user?.full_name || user?.name || user?.username || "Kasir";
   const activeShiftName = session?.shift_name || shiftName;

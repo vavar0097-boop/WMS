@@ -27,6 +27,22 @@ function getUnitName(menuItem: PosMenuItemRow) {
   );
 }
 
+function getBomComponents(menuItem: PosMenuItemRow) {
+  return Array.isArray(menuItem.bom_components)
+    ? menuItem.bom_components
+    : [];
+}
+
+function getComponentName(
+  component: ReturnType<typeof getBomComponents>[number],
+) {
+  return (
+    component.component_item?.item_name ||
+    component.component_item?.item_code ||
+    "BOM component"
+  );
+}
+
 function aggregateQuantities(
   items: Array<{
     itemId: string;
@@ -43,6 +59,75 @@ function aggregateQuantities(
   }
 
   return quantityByItem;
+}
+
+function aggregateSaleStockRequirements(
+  saleItems: Array<{
+    menuItem: PosMenuItemRow;
+    itemId: string;
+    quantity: number;
+  }>,
+) {
+  const requirements = new Map<
+    string,
+    {
+      itemId: string;
+      quantity: number;
+      label: string;
+      sourceMenuNames: Set<string>;
+    }
+  >();
+
+  for (const saleItem of saleItems) {
+    const components = getBomComponents(saleItem.menuItem);
+
+    if (components.length === 0) {
+      const existing = requirements.get(saleItem.itemId);
+      const label =
+        saleItem.menuItem.items?.item_name ||
+        saleItem.menuItem.menu_name;
+
+      if (existing) {
+        existing.quantity += saleItem.quantity;
+        existing.sourceMenuNames.add(saleItem.menuItem.menu_name);
+      } else {
+        requirements.set(saleItem.itemId, {
+          itemId: saleItem.itemId,
+          quantity: saleItem.quantity,
+          label,
+          sourceMenuNames: new Set([saleItem.menuItem.menu_name]),
+        });
+      }
+
+      continue;
+    }
+
+    for (const component of components) {
+      const componentItemId = component.component_item_id;
+      const quantity =
+        numberValue(component.quantity_per_menu) * saleItem.quantity;
+
+      if (!componentItemId || quantity <= 0) {
+        continue;
+      }
+
+      const existing = requirements.get(componentItemId);
+
+      if (existing) {
+        existing.quantity += quantity;
+        existing.sourceMenuNames.add(saleItem.menuItem.menu_name);
+      } else {
+        requirements.set(componentItemId, {
+          itemId: componentItemId,
+          quantity,
+          label: getComponentName(component),
+          sourceMenuNames: new Set([saleItem.menuItem.menu_name]),
+        });
+      }
+    }
+  }
+
+  return [...requirements.values()];
 }
 
 export class PosSaleService {
@@ -75,6 +160,42 @@ export class PosSaleService {
 
     return Promise.all(
       menuItems.map(async (item) => {
+        const components = getBomComponents(item);
+
+        if (components.length > 0) {
+          const stockByComponent = await Promise.all(
+            components.map(async (component) => {
+              const quantityPerMenu = numberValue(
+                component.quantity_per_menu,
+              );
+
+              if (!component.component_item_id || quantityPerMenu <= 0) {
+                return 0;
+              }
+
+              const currentStock = numberValue(
+                await stockRepository.getCurrentStock(
+                  component.component_item_id,
+                  activeSession.location_id,
+                ),
+              );
+
+              return Math.floor(currentStock / quantityPerMenu);
+            }),
+          );
+
+          const currentStock =
+            stockByComponent.length > 0
+              ? Math.min(...stockByComponent)
+              : 0;
+
+          return {
+            ...item,
+            current_stock: currentStock,
+            is_low_stock: currentStock > 0 && currentStock <= 5,
+          };
+        }
+
         if (!item.item_id) {
           return {
             ...item,
@@ -155,28 +276,20 @@ export class PosSaleService {
       };
     });
 
-    const quantityByItem = aggregateQuantities(
-      saleItems.map((item) => ({
-        itemId: item.itemId as string,
-        quantity: item.quantity,
-      })),
-    );
+    const stockRequirements =
+      aggregateSaleStockRequirements(saleItems);
 
-    for (const [itemId, quantity] of quantityByItem) {
+    for (const requirement of stockRequirements) {
       const currentStock = numberValue(
         await stockRepository.getCurrentStock(
-          itemId,
+          requirement.itemId,
           activeSession.location_id,
         ),
       );
 
-      if (currentStock < quantity) {
-        const itemName =
-          saleItems.find((item) => item.itemId === itemId)
-            ?.menuItem.items?.item_name ?? "selected item";
-
+      if (currentStock < requirement.quantity) {
         throw new BadRequestError(
-          `Insufficient stock for ${itemName}`,
+          `Insufficient stock for ${requirement.label}`,
         );
       }
     }
@@ -216,16 +329,19 @@ export class PosSaleService {
       })),
     );
 
-    for (const item of saleItems) {
+    for (const requirement of stockRequirements) {
       await stockRepository.createStockMovement({
-        item_id: item.itemId as string,
+        item_id: requirement.itemId,
         location_id: activeSession.location_id,
         movement_type: "OUT",
-        quantity: item.quantity,
+        quantity: requirement.quantity,
         reference_type: "SALE",
         reference_id: sale.id,
         reference_no: sale.sale_no,
-        remarks: "POS sale",
+        remarks:
+          requirement.sourceMenuNames.size > 1
+            ? `POS sale: ${[...requirement.sourceMenuNames].join(", ")}`
+            : `POS sale: ${[...requirement.sourceMenuNames][0]}`,
         created_by: cashierId,
         stock_effect: "MINUS",
       });
@@ -272,16 +388,15 @@ export class PosSaleService {
       throw new BadRequestError("Only paid sale can be voided");
     }
 
-    const saleItems = Array.isArray(sale.sale_items)
-      ? sale.sale_items
-      : [];
+    const saleMovements =
+      await posSaleRepository.findSaleStockMovements(sale.id);
 
-    for (const item of saleItems) {
+    for (const movement of saleMovements) {
       await stockRepository.createStockMovement({
-        item_id: item.item_id,
+        item_id: movement.item_id,
         location_id: sale.location_id,
         movement_type: "IN",
-        quantity: numberValue(item.quantity),
+        quantity: numberValue(movement.quantity),
         reference_type: "SALE",
         reference_id: sale.id,
         reference_no: sale.sale_no,

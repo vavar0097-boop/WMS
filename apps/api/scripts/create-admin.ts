@@ -3,8 +3,16 @@ import bcrypt from "bcryptjs";
 import { db } from "../src/database/client";
 
 async function main() {
+  const username = process.env.ADMIN_USERNAME?.trim() || "admin";
+  const password = process.env.ADMIN_PASSWORD?.trim();
+
+  if (!password) {
+    console.error("ADMIN_PASSWORD is required to create or update an admin user.");
+    process.exit(1);
+  }
+
   const passwordHash = await bcrypt.hash(
-    "admin123",
+    password,
     10
   );
 
@@ -12,7 +20,7 @@ async function main() {
     .from("users")
     .upsert(
       {
-        username: "admin",
+        username,
         full_name: "System Administrator",
         password_hash: passwordHash,
         is_active: true,

@@ -76,6 +76,22 @@ export class PosSaleRepository {
             code,
             name
           )
+        ),
+        bom_components:pos_menu_item_bom_components (
+          id,
+          component_item_id,
+          quantity_per_menu,
+          tolerance_percent,
+          is_fixed_quantity,
+          component_item:component_item_id (
+            id,
+            item_code,
+            item_name,
+            units:base_unit_id (
+              code,
+              name
+            )
+          )
         )
       `)
       .eq("is_visible", true)
@@ -118,6 +134,22 @@ export class PosSaleRepository {
           units:base_unit_id (
             code,
             name
+          )
+        ),
+        bom_components:pos_menu_item_bom_components (
+          id,
+          component_item_id,
+          quantity_per_menu,
+          tolerance_percent,
+          is_fixed_quantity,
+          component_item:component_item_id (
+            id,
+            item_code,
+            item_name,
+            units:base_unit_id (
+              code,
+              name
+            )
           )
         )
       `)
@@ -236,6 +268,21 @@ export class PosSaleRepository {
     }
 
     return data;
+  }
+
+  async findSaleStockMovements(saleId: string) {
+    const { data, error } = await db
+      .from("stock_ledgers")
+      .select("*")
+      .eq("reference_type", "SALE")
+      .eq("reference_id", saleId)
+      .eq("movement_type", "OUT");
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
   }
 
   async voidSale(params: {

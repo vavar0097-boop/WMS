@@ -9,7 +9,12 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { getApiErrorMessage } from "@/shared/lib/api/error";
+import {
+  hasPermission,
+  PERMISSIONS,
+} from "@/shared/auth/permissions";
 import { toast } from "@/shared/ui/toast";
+import { useAuthStore } from "@/stores/auth.store";
 import { MasterDataShell } from "../components/MasterDataShell";
 import { StatusPill } from "../components/StatusPill";
 import {
@@ -53,6 +58,8 @@ function toPayload(form: LocationForm): LocationPayload {
 }
 
 export function LocationsPage() {
+  const userRole = useAuthStore((state) => state.user?.role);
+  const canWrite = hasPermission(userRole, PERMISSIONS.LOCATIONS_WRITE);
   const [locations, setLocations] = useState<LocationRow[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseRow[]>([]);
   const [search, setSearch] = useState("");
@@ -259,7 +266,7 @@ export function LocationsPage() {
     <MasterDataShell
       title="Locations"
       description="Create, edit, and manage warehouse locations."
-      action={
+      action={canWrite ? (
         <button
           type="button"
           onClick={openCreateModal}
@@ -268,7 +275,7 @@ export function LocationsPage() {
           <Plus size={16} />
           Add Location
         </button>
-      }
+      ) : null}
     >
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -379,6 +386,7 @@ export function LocationsPage() {
                     <td className="whitespace-nowrap px-5 py-4">
                       <StatusPill active={location.is_active} />
                     </td>
+                    {canWrite ? (
                     <td className="whitespace-nowrap px-5 py-4 text-right">
                       <div className="inline-flex items-center gap-2">
                         <button
@@ -400,6 +408,11 @@ export function LocationsPage() {
                         </button>
                       </div>
                     </td>
+                    ) : (
+                      <td className="whitespace-nowrap px-5 py-4 text-right text-sm text-slate-400">
+                        Read only
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

@@ -14,6 +14,12 @@ router.get(
   permissionMiddleware(PERMISSIONS.SETTINGS_READ),
   controller.getMenuItems.bind(controller),
 );
+router.get(
+  "/pos-menu/:id/bom",
+  authMiddleware,
+  permissionMiddleware(PERMISSIONS.SETTINGS_READ),
+  controller.getBom.bind(controller),
+);
 router.post(
   "/pos-menu",
   authMiddleware,
@@ -25,6 +31,12 @@ router.put(
   authMiddleware,
   permissionMiddleware(PERMISSIONS.SETTINGS_WRITE),
   controller.updateMenuItem.bind(controller),
+);
+router.put(
+  "/pos-menu/:id/bom",
+  authMiddleware,
+  permissionMiddleware(PERMISSIONS.SETTINGS_WRITE),
+  controller.replaceBom.bind(controller),
 );
 router.delete(
   "/pos-menu/:id",

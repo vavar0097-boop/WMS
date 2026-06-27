@@ -17,6 +17,32 @@ export type PosMenuItem = {
     item_code: string;
     item_name: string;
   } | null;
+  bom_components?: PosMenuBomComponent[];
+};
+
+export type PosMenuBomComponent = {
+  id?: string;
+  menu_item_id?: string;
+  component_item_id: string;
+  quantity_per_menu: number | string;
+  tolerance_percent: number | string;
+  is_fixed_quantity: boolean;
+  notes?: string | null;
+  component_item?: {
+    id: string;
+    item_code: string;
+    item_name: string;
+  } | null;
+};
+
+export type PosMenuBomPayload = {
+  components: Array<{
+    component_item_id: string;
+    quantity_per_menu: number;
+    tolerance_percent: number;
+    is_fixed_quantity: boolean;
+    notes?: string | null;
+  }>;
 };
 
 export type PosMenuPayload = {
@@ -89,5 +115,22 @@ export const posSettingsService = {
     );
 
     return response.data;
+  },
+
+  async getBom(id: string) {
+    const response = await apiClient.get(
+      `/settings/pos-menu/${id}/bom`,
+    );
+
+    return normalizeArray<PosMenuBomComponent>(response.data);
+  },
+
+  async replaceBom(id: string, payload: PosMenuBomPayload) {
+    const response = await apiClient.put(
+      `/settings/pos-menu/${id}/bom`,
+      payload,
+    );
+
+    return normalizeArray<PosMenuBomComponent>(response.data);
   },
 };

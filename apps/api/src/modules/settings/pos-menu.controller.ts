@@ -89,4 +89,43 @@ export class PosMenuController {
       next(error);
     }
   }
+
+  async getBom(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const components = await service.getBom(String(req.params.id));
+
+      res.status(200).json({
+        success: true,
+        message: "POS menu BOM retrieved successfully",
+        data: components,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async replaceBom(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const components = await service.replaceBom(
+        String(req.params.id),
+        req.body?.components,
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "POS menu BOM saved successfully",
+        data: components,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

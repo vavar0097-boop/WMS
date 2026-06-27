@@ -12,10 +12,23 @@ process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 async function main() {
+const username =
+process.env.ADMIN_USERNAME?.trim() ||
+"admin";
+
+const password =
+process.env.ADMIN_PASSWORD?.trim();
+
+if (!password) {
+console.error(
+"ADMIN_PASSWORD is required to create an admin user."
+);
+process.exit(1);
+}
 
 const passwordHash =
 await bcrypt.hash(
-"admin123",
+password,
 10
 );
 
@@ -23,7 +36,7 @@ const { data, error } =
 await supabase
 .from("users")
 .insert({
-username: "admin",
+username,
 full_name: "System Administrator",
 password_hash: passwordHash,
 })

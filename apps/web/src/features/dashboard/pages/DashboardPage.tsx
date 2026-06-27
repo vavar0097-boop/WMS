@@ -1,8 +1,9 @@
 import {
+  Activity,
   ArrowLeftRight,
   Boxes,
-  MapPin,
   Package,
+  ShoppingCart,
   TrendingUp,
   Warehouse,
 } from "lucide-react";
@@ -12,7 +13,12 @@ import { Link } from "react-router-dom";
 import {
   masterDataPageService,
 } from "@/features/master-data/services/master-data-page.service";
+import {
+  financeService,
+  PosSaleFinanceRow,
+} from "@/features/finance/services/finance.service";
 import { stockService } from "@/features/stocks/services/stock.service";
+import { StockLedger } from "@/features/stocks/types/stock.types";
 import { transferService } from "@/features/transfers/services/transfer.service";
 import { getApiErrorMessage } from "@/shared/lib/api/error";
 import { toast } from "@/shared/ui/toast";
@@ -31,8 +37,75 @@ type Stat = {
 
 const chartLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+type MovementSummary = {
+  inbound: number;
+  outbound: number;
+  adjustments: number;
+  salesCount: number;
+  salesTotal: number;
+};
+
+function numberValue(value: unknown) {
+  const amount = Number(value);
+
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function summarizeMovements(ledgers: StockLedger[]): MovementSummary {
+  return ledgers.reduce(
+    (summary, ledger) => {
+      const quantity = numberValue(ledger.quantity);
+
+      if (ledger.reference_type === "SALE") {
+        summary.salesCount += 1;
+      }
+
+      if (ledger.movement_type === "IN") {
+        summary.inbound += quantity;
+      } else if (ledger.movement_type === "OUT") {
+        summary.outbound += quantity;
+      } else if (ledger.movement_type === "ADJ") {
+        summary.adjustments += quantity;
+      }
+
+      return summary;
+    },
+    {
+      inbound: 0,
+      outbound: 0,
+      adjustments: 0,
+      salesCount: 0,
+      salesTotal: 0,
+    },
+  );
+}
+
+function summarizeSales(sales: PosSaleFinanceRow[]) {
+  return sales
+    .filter((sale) => sale.status === "PAID")
+    .reduce(
+      (summary, sale) => ({
+        salesCount: summary.salesCount + 1,
+        salesTotal: summary.salesTotal + numberValue(sale.grand_total),
+      }),
+      {
+        salesCount: 0,
+        salesTotal: 0,
+      },
+    );
+}
+
 export function DashboardPage() {
   const [stats, setStats] = useState<Stat[]>([]);
+  const [movementSummary, setMovementSummary] =
+    useState<MovementSummary>({
+      inbound: 0,
+      outbound: 0,
+      adjustments: 0,
+      salesCount: 0,
+      salesTotal: 0,
+    });
+  const [recentSales, setRecentSales] = useState<PosSaleFinanceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +120,8 @@ export function DashboardPage() {
           stocks,
           items,
           warehouses,
-          locations,
+          ledgersResult,
+          salesResult,
         ] = await Promise.all([
           transferService.getTransfers(),
           stockService.getCurrentStocks({
@@ -61,14 +135,36 @@ export function DashboardPage() {
           masterDataPageService.getWarehouses({
             limit: 100,
           }),
-          masterDataPageService.getLocations({
-            limit: 200,
+          stockService.getLedgers({
+            page: 1,
+            limit: 100,
           }),
+          financeService.getPosSales({
+            limit: 50,
+          }).catch(() => []),
         ]);
 
         if (!mounted) return;
 
+        const movement = summarizeMovements(ledgersResult.data);
+        const sales = summarizeSales(salesResult);
+
+        setMovementSummary({
+          ...movement,
+          salesCount: sales.salesCount || movement.salesCount,
+          salesTotal: sales.salesTotal,
+        });
+        setRecentSales(salesResult.slice(0, 5));
+
         setStats([
+          {
+            label: "POS Sales",
+            value: sales.salesCount || movement.salesCount,
+            href: "/dashboard/finance",
+            icon: ShoppingCart,
+            tone: "from-rose-500 to-orange-500",
+            accent: "bg-rose-50 text-rose-700",
+          },
           {
             label: "Transfers",
             value: transfers.length,
@@ -102,10 +198,10 @@ export function DashboardPage() {
             accent: "bg-violet-50 text-violet-700",
           },
           {
-            label: "Locations",
-            value: locations.length,
-            href: "/dashboard/locations",
-            icon: MapPin,
+            label: "Stock Out",
+            value: Math.round(movement.outbound),
+            href: "/dashboard/stock",
+            icon: Activity,
             tone: "from-amber-500 to-orange-500",
             accent: "bg-amber-50 text-amber-700",
           },
@@ -244,7 +340,7 @@ export function DashboardPage() {
               </p>
             </div>
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
-              Live mock trend
+              Latest ledger
             </span>
           </div>
 
@@ -273,35 +369,65 @@ export function DashboardPage() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-slate-950">
-            Module Mix
+            Sales & Stock Cycle
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Relative distribution of dashboard modules.
+            Recent POS sales and item movement quantities.
           </p>
 
           <div className="mt-6 space-y-4">
-            {stats.map((stat) => (
-              <div key={stat.label}>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-semibold text-slate-700">
-                    {stat.label}
-                  </span>
-                  <span className="text-slate-500">
-                    {total
-                      ? `${Math.round((stat.value / total) * 100)}%`
-                      : "0%"}
-                  </span>
-                </div>
-                <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className={`h-full rounded-full bg-gradient-to-r ${stat.tone}`}
-                    style={{
-                      width: `${Math.min(100, Math.max(6, total ? (stat.value / total) * 100 : 0))}%`,
-                    }}
-                  />
-                </div>
+            {[
+              ["Sales", movementSummary.salesCount],
+              ["Sales Total", movementSummary.salesTotal],
+              ["Stock In", movementSummary.inbound],
+              ["Stock Out", movementSummary.outbound],
+              ["Adjustments", movementSummary.adjustments],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm"
+              >
+                <span className="font-semibold text-slate-700">
+                  {label}
+                </span>
+                <span className="font-bold text-slate-950">
+                  {label === "Sales Total"
+                    ? new Intl.NumberFormat("id-ID", {
+                        style: "currency",
+                        currency: "IDR",
+                        maximumFractionDigits: 0,
+                      }).format(numberValue(value))
+                    : numberValue(value).toLocaleString("id-ID")}
+                </span>
               </div>
             ))}
+
+            {recentSales.length > 0 ? (
+              <div className="pt-2">
+                <p className="mb-2 text-xs font-bold uppercase text-slate-400">
+                  Recent sales
+                </p>
+                <div className="space-y-2">
+                  {recentSales.map((sale) => (
+                    <div
+                      key={sale.id}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <span className="truncate text-slate-600">
+                        {sale.sale_no}
+                      </span>
+                      <span className="font-semibold text-slate-950">
+                        {new Intl.NumberFormat("id-ID", {
+                          style: "currency",
+                          currency: "IDR",
+                          maximumFractionDigits: 0,
+                        }).format(numberValue(sale.grand_total))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </section>
       </div>

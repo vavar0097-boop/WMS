@@ -17,6 +17,22 @@ export type PosMenuItemRow = {
       name?: string | null;
     } | null;
   } | null;
+  bom_components?: Array<{
+    id: string;
+    component_item_id: string;
+    quantity_per_menu: number | string;
+    tolerance_percent: number | string;
+    is_fixed_quantity: boolean;
+    component_item?: {
+      id: string;
+      item_code: string;
+      item_name: string;
+      units?: {
+        code?: string | null;
+        name?: string | null;
+      } | null;
+    } | null;
+  }>;
   current_stock?: number | null;
   is_low_stock?: boolean;
 };
