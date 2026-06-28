@@ -16,6 +16,23 @@ public_html/
 
 Jangan upload folder `upload-public_html`-nya, upload isi di dalamnya.
 
+Package ulang frontend production dengan script ini:
+
+```bash
+scripts/package-web-production.sh https://wms-production-23d1.up.railway.app
+```
+
+Script ini akan membuat ulang:
+
+```txt
+deploy/app-ku.unaux.com/upload-public_html/
+deploy/app-ku.unaux.com/upload-public_html.zip
+deploy/app-ku.unaux.com/env.web.production
+```
+
+File `.htaccess` ikut dibuat untuk fallback route React seperti
+`/login`, `/pos`, dan `/dashboard`.
+
 ## Catatan API
 
 Hosting dari screenshot terlihat seperti static/shared hosting. Frontend React bisa di-upload lewat File Manager, tapi Express API `apps/api` butuh server Node.js.
@@ -28,11 +45,18 @@ VITE_API_BASE_URL=https://URL_API_PUBLIC npm run build:web
 
 Kalau API dibuat satu domain dengan reverse proxy `/api`, frontend bisa dibuild tanpa `VITE_API_BASE_URL`.
 
-## Render API
+## API Production
 
-Repo ini sudah punya `render.yaml` untuk membuat service API di Render.
+Frontend production saat ini diarahkan ke:
 
-Environment variable yang wajib diisi di Render:
+```txt
+https://wms-production-23d1.up.railway.app
+```
+
+Repo ini juga punya `render.yaml` kalau API mau dipindah atau dibuat ulang di
+Render.
+
+Environment variable yang wajib diisi di API host:
 
 ```txt
 NODE_ENV=production
@@ -43,10 +67,10 @@ JWT_ACCESS_SECRET=...
 JWT_REFRESH_SECRET=...
 ```
 
-Setelah Render memberi URL API, package ulang frontend:
+Setelah API host memberi URL publik, package ulang frontend:
 
 ```bash
-scripts/package-web-production.sh https://URL_API_RENDER
+scripts/package-web-production.sh https://URL_API_PUBLIC
 ```
 
 Lalu upload ulang:

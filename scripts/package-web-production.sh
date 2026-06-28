@@ -16,6 +16,29 @@ rm -rf "$UPLOAD_DIR"
 mkdir -p "$UPLOAD_DIR"
 cp -a apps/web/dist/. "$UPLOAD_DIR/"
 
+if [ -f "$UPLOAD_DIR/sw.js" ]; then
+  CACHE_VERSION="enterprise-wms-$(date +%Y%m%d%H%M%S)"
+  sed -i "s/const CACHE_NAME = \"[^\"]*\";/const CACHE_NAME = \"$CACHE_VERSION\";/" "$UPLOAD_DIR/sw.js"
+fi
+
+cat > "$UPLOAD_DIR/.htaccess" <<'EOF'
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^api(/.*)?$ - [L]
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set Service-Worker-Allowed "/"
+</IfModule>
+EOF
+
+rm -f "$DEPLOY_DIR/upload-public_html.zip"
+
 (
   cd "$UPLOAD_DIR"
   zip -qr "../upload-public_html.zip" .

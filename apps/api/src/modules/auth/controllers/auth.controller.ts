@@ -93,7 +93,7 @@ export class AuthController {
     }
 
     const accessToken =
-      this.service.refresh(refreshToken);
+      await this.service.refresh(refreshToken);
 
     res.cookie(
       "access_token",

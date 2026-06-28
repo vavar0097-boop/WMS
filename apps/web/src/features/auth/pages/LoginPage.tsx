@@ -14,7 +14,10 @@ import {
 import { Input } from "@/shared/ui/input/input";
 import { toast } from "@/shared/ui/toast";
 import { useAuthStore } from "@/stores/auth.store";
-import { getHomePathForRole } from "@/shared/auth/role-home";
+import {
+  getHomePathForRole,
+  getSafePathForRole,
+} from "@/shared/auth/role-home";
 
 type LocationState = {
   from?: string;
@@ -30,7 +33,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
 
   const state = location.state as LocationState | null;
-  const redirectTo = state?.from || getHomePathForRole(user?.role);
+  const redirectTo = getSafePathForRole(user?.role, state?.from);
 
   const canSubmit =
     username.trim().length > 0 &&
@@ -68,7 +71,7 @@ export function LoginPage() {
         "Welcome back to Enterprise WMS.",
       );
 
-      navigate(state?.from || getHomePathForRole(loggedInUser?.role), {
+      navigate(getSafePathForRole(loggedInUser?.role, state?.from), {
         replace: true,
       });
     } catch (error) {

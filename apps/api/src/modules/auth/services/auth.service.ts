@@ -27,8 +27,38 @@ function getRoleName(userRoles: UserRoleRow[] | null | undefined) {
   return role?.name ?? "OPERATOR";
 }
 
+type AuthUser = {
+  id: string;
+  username: string;
+  full_name?: string | null;
+  user_roles?: UserRoleRow[] | null;
+};
+
 export class AuthService {
   private repository = new AuthRepository();
+
+  private signAccessToken(user: AuthUser) {
+    return jwt.sign(
+      {
+        sub: user.id,
+        username: user.username,
+        role: getRoleName(user.user_roles),
+      },
+      env.JWT_ACCESS_SECRET,
+      {
+        expiresIn: "15m",
+      }
+    );
+  }
+
+  private toAuthUser(user: AuthUser) {
+    return {
+      id: user.id,
+      username: user.username,
+      full_name: user.full_name,
+      role: getRoleName(user.user_roles),
+    };
+  }
 
   async login({ username, password }: LoginDto) {
     const user = await this.repository.findByUsername(username);
@@ -46,17 +76,7 @@ export class AuthService {
       throw new UnauthorizedError("Invalid credentials");
     }
 
-    const accessToken = jwt.sign(
-      {
-        sub: user.id,
-        username: user.username,
-        role: getRoleName(user.user_roles),
-      },
-      env.JWT_ACCESS_SECRET,
-      {
-        expiresIn: "15m",
-      }
-    );
+    const accessToken = this.signAccessToken(user);
 
     const refreshToken = jwt.sign(
       {
@@ -69,18 +89,13 @@ export class AuthService {
     );
 
     return {
-      user: {
-        id: user.id,
-        username: user.username,
-        full_name: user.full_name,
-        role: getRoleName(user.user_roles),
-      },
+      user: this.toAuthUser(user),
       accessToken,
       refreshToken,
     };
   }
 
-  refresh(refreshToken: string) {
+  async refresh(refreshToken: string) {
     const payload = jwt.verify(
       refreshToken,
       env.JWT_REFRESH_SECRET
@@ -88,14 +103,12 @@ export class AuthService {
       sub: string;
     };
 
-    return jwt.sign(
-      {
-        sub: payload.sub,
-      },
-      env.JWT_ACCESS_SECRET,
-      {
-        expiresIn: "15m",
-      }
-    );
+    const user = await this.repository.findById(payload.sub);
+
+    if (!user) {
+      throw new UnauthorizedError("Invalid refresh token");
+    }
+
+    return this.signAccessToken(user);
   }
 }

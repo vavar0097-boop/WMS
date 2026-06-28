@@ -35,14 +35,15 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
     try {
       const user = await authService.login(payload);
+      const isValidUser = Boolean(user?.id && user?.role);
 
       set({
-        user,
-        isAuthenticated: true,
+        user: isValidUser ? user : null,
+        isAuthenticated: isValidUser,
         hasCheckedSession: true,
       });
 
-      return user;
+      return isValidUser ? user : null;
     } finally {
       set({
         isLoggingIn: false,
@@ -57,10 +58,11 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
     try {
       const user = await authService.me();
+      const isValidUser = Boolean(user?.id && user?.role);
 
       set({
-        user,
-        isAuthenticated: Boolean(user),
+        user: isValidUser ? user : null,
+        isAuthenticated: isValidUser,
         hasCheckedSession: true,
       });
     } catch {

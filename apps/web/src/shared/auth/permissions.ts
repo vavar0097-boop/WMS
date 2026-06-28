@@ -85,8 +85,12 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
 };
 
+export function normalizeRole(role?: string | null) {
+  return role?.trim().toUpperCase() || "";
+}
+
 export function getPermissionsForRole(role?: string | null) {
-  return ROLE_PERMISSIONS[role ?? ""] ?? [];
+  return ROLE_PERMISSIONS[normalizeRole(role)] ?? [];
 }
 
 export function hasPermission(

@@ -1,11 +1,29 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import {
+  Navigate,
+  Outlet,
+  useLocation,
+} from "react-router-dom";
 
 import { AppHeader } from "@/shared/layout/AppHeader";
 import { AppSidebar } from "@/shared/layout/AppSidebar";
+import { getSafePathForRole } from "@/shared/auth/role-home";
+import { useAuthStore } from "@/stores/auth.store";
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+  const role = useAuthStore((state) => state.user?.role);
+  const safePath = getSafePathForRole(role, location.pathname);
+
+  if (role && safePath !== location.pathname) {
+    return (
+      <Navigate
+        to={safePath}
+        replace
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-950">

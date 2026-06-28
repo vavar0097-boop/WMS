@@ -41,10 +41,20 @@ export function authMiddleware(
         token,
         env.JWT_ACCESS_SECRET
       ) as {
-        sub: string;
-        username: string;
-        role: string;
+        sub?: unknown;
+        username?: unknown;
+        role?: unknown;
       };
+
+    if (
+      typeof payload.sub !== "string" ||
+      typeof payload.username !== "string" ||
+      typeof payload.role !== "string"
+    ) {
+      throw new UnauthorizedError(
+        "Invalid token"
+      );
+    }
 
     req.user = {
       id: payload.sub,
