@@ -91,32 +91,3 @@ npm run create-admin
 Use `db:baseline` once for an existing Supabase database that already has the
 tables from `database/migrations`. Use `db:migrate` for new migration files
 after that.
-
-### Production Smoke Tests
-
-Run the finance report smoke test after backend deploys:
-
-```bash
-npm run smoke:finance-report -- --month=2026-07
-```
-
-This logs in with the finance test account, calls the live monthly report API,
-and verifies that the response contains daily sheet names such as
-`2026-07-01`.
-
-To require Google Sheets sync as part of the smoke test:
-
-```bash
-npm run smoke:finance-report -- --month=2026-07 --sync-google
-```
-
-Set these only when overriding the defaults:
-
-```env
-WMS_API_BASE_URL=https://wms-production-23d1.up.railway.app/api
-WMS_CLIENT_ORIGIN=https://app-ku.unaux.com
-WMS_FINANCE_USERNAME=...
-WMS_FINANCE_PASSWORD=...
-WMS_REPORT_MONTH=2026-07
-WMS_SYNC_GOOGLE=true
-```
