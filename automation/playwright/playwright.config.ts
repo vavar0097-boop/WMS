@@ -2,6 +2,7 @@ import "dotenv/config";
 import { defineConfig, devices } from "@playwright/test";
 
 const appUrl = process.env.WMS_APP_URL || "https://app-ku.unaux.com";
+const recordRun = process.env.WMS_RECORD === "true";
 
 export default defineConfig({
   testDir: "./tests",
@@ -17,9 +18,9 @@ export default defineConfig({
   ],
   use: {
     baseURL: appUrl,
-    trace: "retain-on-failure",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    trace: recordRun ? "on" : "retain-on-failure",
+    screenshot: recordRun ? "on" : "only-on-failure",
+    video: recordRun ? "on" : "retain-on-failure",
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },

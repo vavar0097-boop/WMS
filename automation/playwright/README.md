@@ -27,6 +27,23 @@ npm run test:ui
 npm run test:firefox
 ```
 
+Login tests:
+
+```bash
+npm run test:login
+npm run test:login:headed
+npm run test:login:record
+```
+
+`test:record` and `test:login:record` open Firefox headed and keep trace, screenshot, and video for the run.
+
+Open Playwright Recorder in Firefox:
+
+```bash
+npm run codegen
+npm run codegen:login
+```
+
 Finance report only:
 
 ```bash
@@ -48,6 +65,7 @@ WMS_ALLOW_MUTATION=true
 The default tests verify:
 
 - admin dashboard can open
+- login form positive and negative flows pass
 - cashier POS route can open
 - dashboard shows POS sales by outlet
 - weekly movement card is gone
