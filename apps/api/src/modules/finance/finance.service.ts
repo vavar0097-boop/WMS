@@ -34,6 +34,46 @@ type DailyPurchaseItemRow = {
   is_edited?: boolean | null;
 };
 
+type ReportTransactionRow = {
+  transaction_date?: string | null;
+  type?: string | null;
+  category?: string | null;
+  description?: string | null;
+  amount?: number | string | null;
+  payment_method?: string | null;
+};
+
+type ReportSaleRow = {
+  sale_no?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+  grand_total?: number | string | null;
+  location?: {
+    code?: string | null;
+    name?: string | null;
+  } | null;
+  sale_payments?: SalePaymentRow[];
+};
+
+type ReportPurchaseRow = {
+  purchase_date?: string | null;
+  vendor_name?: string | null;
+  status?: string | null;
+  total_amount?: number | string | null;
+  daily_purchase_items?: DailyPurchaseItemRow[];
+};
+
+type ReportSettlementRow = {
+  session_no?: string | null;
+  shift_name?: string | null;
+  status?: string | null;
+  opened_at?: string | null;
+  total_sales?: number | string | null;
+  calculated_expected_cash?: number | string | null;
+  actual_cash?: number | string | null;
+  cash_difference?: number | string | null;
+};
+
 function cleanPayload(
   payload: FinanceTransactionPayload,
 ): FinanceTransactionPayload {
@@ -264,6 +304,10 @@ function toRows(values: Array<Array<string | number>>) {
   return values.map((row) => row.map((value) => String(value ?? "")));
 }
 
+function quoteSheetName(name: string) {
+  return `'${name.replace(/'/g, "''")}'`;
+}
+
 async function syncGoogleSheet(params: {
   month: string;
   sheets: Record<string, Array<Array<string | number>>>;
@@ -320,8 +364,85 @@ async function syncGoogleSheet(params: {
     throw new BadRequestError("Google authentication returned no token");
   }
 
+  const metadataResponse = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!metadataResponse.ok) {
+    throw new BadRequestError("Google Sheets metadata failed");
+  }
+
+  const metadata = (await metadataResponse.json()) as {
+    sheets?: Array<{
+      properties?: {
+        title?: string;
+      };
+    }>;
+  };
+  const existingSheets = new Set(
+    (metadata.sheets ?? [])
+      .map((sheet) => sheet.properties?.title)
+      .filter((title): title is string => Boolean(title)),
+  );
+  const missingSheets = Object.keys(params.sheets).filter(
+    (name) => !existingSheets.has(name),
+  );
+
+  if (missingSheets.length > 0) {
+    const addSheetResponse = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requests: missingSheets.map((name) => ({
+            addSheet: {
+              properties: {
+                title: name,
+              },
+            },
+          })),
+        }),
+      },
+    );
+
+    if (!addSheetResponse.ok) {
+      throw new BadRequestError("Google Sheets tab creation failed");
+    }
+  }
+
+  const ranges = Object.keys(params.sheets).map(
+    (name) => `${quoteSheetName(name)}!A:Z`,
+  );
+
+  const clearResponse = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchClear`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ranges,
+      }),
+    },
+  );
+
+  if (!clearResponse.ok) {
+    throw new BadRequestError("Google Sheets clear failed");
+  }
+
   const data = Object.entries(params.sheets).map(([name, values]) => ({
-    range: `${params.month} ${name}!A1`,
+    range: `${quoteSheetName(name)}!A1`,
     values: toRows(values),
   }));
 
@@ -347,7 +468,168 @@ async function syncGoogleSheet(params: {
   return {
     synced: true,
     spreadsheet_id: spreadsheetId,
+    sheet_count: Object.keys(params.sheets).length,
   };
+}
+
+function saleDate(sale: ReportSaleRow) {
+  return String(sale.created_at ?? "").slice(0, 10);
+}
+
+function settlementDate(settlement: ReportSettlementRow) {
+  return String(settlement.opened_at ?? "").slice(0, 10);
+}
+
+function paymentTotal(sale: ReportSaleRow, method: "CASH" | "NONCASH") {
+  const payments = Array.isArray(sale.sale_payments)
+    ? sale.sale_payments
+    : [];
+
+  return payments
+    .filter((payment) => payment.payment_method === method)
+    .reduce((sum, payment) => sum + numberValue(payment.amount), 0);
+}
+
+function section(title: string, rows: Array<Array<string | number>>) {
+  return [[""], [title], ...rows];
+}
+
+function collectReportDates(params: {
+  dateFrom: string;
+  transactions: ReportTransactionRow[];
+  sales: ReportSaleRow[];
+  purchases: ReportPurchaseRow[];
+  settlements: ReportSettlementRow[];
+}) {
+  const dates = new Set<string>();
+
+  for (const row of params.transactions) {
+    if (row.transaction_date) dates.add(row.transaction_date);
+  }
+
+  for (const row of params.sales) {
+    const date = saleDate(row);
+    if (date) dates.add(date);
+  }
+
+  for (const row of params.purchases) {
+    if (row.purchase_date) dates.add(row.purchase_date);
+  }
+
+  for (const row of params.settlements) {
+    const date = settlementDate(row);
+    if (date) dates.add(date);
+  }
+
+  return [...(dates.size > 0 ? dates : new Set([params.dateFrom]))].sort();
+}
+
+function buildDailySheets(params: {
+  dateFrom: string;
+  dateTo: string;
+  transactions: ReportTransactionRow[];
+  sales: ReportSaleRow[];
+  purchases: ReportPurchaseRow[];
+  settlements: ReportSettlementRow[];
+}) {
+  const dates = collectReportDates(params);
+
+  return Object.fromEntries(
+    dates.map((date) => {
+      const transactions = params.transactions.filter(
+        (row) => row.transaction_date === date,
+      );
+      const sales = params.sales.filter((row) => saleDate(row) === date);
+      const purchases = params.purchases.filter(
+        (row) => row.purchase_date === date,
+      );
+      const settlements = params.settlements.filter(
+        (row) => settlementDate(row) === date,
+      );
+      const income = transactions
+        .filter((row) => row.type === "INCOME")
+        .reduce((sum, row) => sum + numberValue(row.amount), 0);
+      const expense = transactions
+        .filter((row) => row.type === "EXPENSE")
+        .reduce((sum, row) => sum + numberValue(row.amount), 0);
+      const cashSales = sales.reduce(
+        (sum, sale) => sum + paymentTotal(sale, "CASH"),
+        0,
+      );
+      const noncashSales = sales.reduce(
+        (sum, sale) => sum + paymentTotal(sale, "NONCASH"),
+        0,
+      );
+
+      const values = [
+        ["Daily Finance Report", date],
+        ["Generated At", new Date().toISOString()],
+        ...section("Summary", [
+          ["Metric", "Amount"],
+          ["Income", income],
+          ["Expense", expense],
+          ["Balance", income - expense],
+          ["Cash Sales", cashSales],
+          ["Noncash Sales", noncashSales],
+          ["POS Sales Count", sales.length],
+          ["Daily Purchases", purchases.length],
+        ]),
+        ...section("Transactions", [
+          ["Date", "Type", "Category", "Description", "Amount", "Payment"],
+          ...transactions.map((row) => [
+            row.transaction_date ?? "",
+            row.type ?? "",
+            row.category ?? "",
+            row.description ?? "",
+            numberValue(row.amount),
+            row.payment_method ?? "",
+          ]),
+        ]),
+        ...section("POS Sales", [
+          ["Time", "Sale No", "Outlet", "Status", "Cash", "Noncash", "Total"],
+          ...sales.map((sale) => [
+            String(sale.created_at ?? ""),
+            sale.sale_no ?? "",
+            sale.location?.name || sale.location?.code || "",
+            sale.status ?? "",
+            paymentTotal(sale, "CASH"),
+            paymentTotal(sale, "NONCASH"),
+            numberValue(sale.grand_total),
+          ]),
+        ]),
+        ...section("Daily Purchases", [
+          ["Date", "Vendor", "Status", "Total", "Edited Items"],
+          ...purchases.map((row) => {
+            const items = Array.isArray(row.daily_purchase_items)
+              ? row.daily_purchase_items
+              : [];
+
+            return [
+              row.purchase_date ?? "",
+              row.vendor_name ?? "",
+              row.status ?? "",
+              numberValue(row.total_amount),
+              items.filter((item) => item.is_edited).length,
+            ];
+          }),
+        ]),
+        ...section("Cashier Settlement", [
+          ["Session", "Shift", "Status", "Sales", "Expected", "Actual", "Diff"],
+          ...settlements.map((row) => [
+            row.session_no ?? "",
+            row.shift_name ?? "",
+            row.status ?? "",
+            numberValue(row.total_sales),
+            numberValue(row.calculated_expected_cash),
+            row.actual_cash ?? "",
+            row.cash_difference ?? "",
+          ]),
+        ]),
+      ];
+
+      return [date, values];
+    }),
+  );
 }
 
 export class FinanceService {
@@ -548,59 +830,14 @@ export class FinanceService {
       return openedAt >= dateFrom && openedAt <= dateTo;
     });
 
-    const sheets = {
-      Summary: [
-        ["Metric", "Amount"],
-        ["Income", income],
-        ["Expense", expense],
-        ["Balance", income - expense],
-        ["Cash Sales", cashSales],
-        ["Noncash Sales", noncashSales],
-        ["POS Sales Count", sales.length],
-        ["Daily Purchases", purchases.length],
-      ],
-      Transactions: [
-        ["Date", "Type", "Category", "Description", "Amount", "Payment"],
-        ...transactions.map((row) => [
-          row.transaction_date,
-          row.type,
-          row.category,
-          row.description ?? "",
-          numberValue(row.amount),
-          row.payment_method ?? "",
-        ]),
-      ],
-      "Daily Purchases": [
-        ["Date", "Vendor", "Status", "Total", "Edited Items"],
-        ...purchases.map((row) => {
-          const items: DailyPurchaseItemRow[] = Array.isArray(
-            row.daily_purchase_items,
-          )
-            ? row.daily_purchase_items
-            : [];
-
-          return [
-            row.purchase_date,
-            row.vendor_name ?? "",
-            row.status,
-            numberValue(row.total_amount),
-            items.filter((item) => item.is_edited).length,
-          ];
-        }),
-      ],
-      Settlement: [
-        ["Session", "Shift", "Status", "Sales", "Expected", "Actual", "Diff"],
-        ...reportSettlements.map((row) => [
-          row.session_no,
-          row.shift_name,
-          row.status,
-          numberValue(row.total_sales),
-          numberValue(row.calculated_expected_cash),
-          row.actual_cash ?? "",
-          row.cash_difference ?? "",
-        ]),
-      ],
-    };
+    const sheets = buildDailySheets({
+      dateFrom,
+      dateTo,
+      transactions,
+      sales,
+      purchases,
+      settlements: reportSettlements,
+    });
 
     const google = params.sync_google
       ? await syncGoogleSheet({

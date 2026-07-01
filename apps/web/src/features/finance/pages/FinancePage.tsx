@@ -727,8 +727,11 @@ export function FinancePage() {
               <p className="text-xs font-semibold text-slate-500">
                 Google:{" "}
                 {report.google.synced
-                  ? "synced"
+                  ? `synced (${report.google.sheet_count ?? Object.keys(report.sheets ?? {}).length} sheets)`
                   : report.google.reason || "not synced"}
+              </p>
+              <p className="text-xs font-semibold text-slate-500">
+                Sheets: {Object.keys(report.sheets ?? {}).join(", ") || "-"}
               </p>
             </div>
           ) : null}

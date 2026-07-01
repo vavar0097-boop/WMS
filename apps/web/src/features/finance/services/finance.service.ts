@@ -127,7 +127,9 @@ export type MonthlyReport = {
     synced: boolean;
     reason?: string;
     spreadsheet_id?: string;
+    sheet_count?: number;
   };
+  sheets?: Record<string, Array<Array<string | number>>>;
 };
 
 export type FinanceSummary = {
