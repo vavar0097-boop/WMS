@@ -1,0 +1,35 @@
+{
+  "cookies": [
+    {
+      "name": "__test",
+      "value": "17e35d65474039c5e2fd4ec5587d5e9b",
+      "domain": "app-ku.unaux.com",
+      "path": "/",
+      "expires": 1782962999.337,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "None"
+    },
+    {
+      "name": "access_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkMTA2YTU0Zi04MDMyLTQ0MzItYmI4Zi02ZGY0MTE4NDE4OWUiLCJ1c2VybmFtZSI6Imthc2lyMSIsInJvbGUiOiJDQVNISUVSIiwiaWF0IjoxNzgyOTQxNDA2LCJleHAiOjE3ODI5NDIzMDZ9.M-AJqjUHJOCV0VdjllFKl9kjZHHD3clNBDmyetXyqpo",
+      "domain": "wms-production-23d1.up.railway.app",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "refresh_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkMTA2YTU0Zi04MDMyLTQ0MzItYmI4Zi02ZGY0MTE4NDE4OWUiLCJpYXQiOjE3ODI5NDE0MDYsImV4cCI6MTc4MzU0NjIwNn0.6hl03GQKxHIuy9614teWNM7-WLvNxPLEL47dwLrrofw",
+      "domain": "wms-production-23d1.up.railway.app",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    }
+  ],
+  "origins": []
+}
