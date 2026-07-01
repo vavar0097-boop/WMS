@@ -1,20 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "../src/auth";
-import {
-  credentialsFor,
-  missingCredentialsMessage,
-} from "../src/env";
 import { optionCount } from "../src/ui-health";
 
 test.describe("forms, dropdowns, and non-destructive functional checks", () => {
-  test.beforeEach(async ({ page }) => {
-    const credentials = credentialsFor("admin");
-    test.skip(!credentials, missingCredentialsMessage("admin"));
-
-    await login(page, credentials!);
-  });
-
   test("finance draft item calculates subtotal and total before save", async ({
     page,
   }) => {

@@ -1,17 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "../src/auth";
-import {
-  credentialsFor,
-  missingCredentialsMessage,
-} from "../src/env";
+import { storageStatePath } from "../src/env";
 
 test.describe("audit logs", () => {
-  test("audit log page renders real table shell", async ({ page }) => {
-    const credentials = credentialsFor("finance");
-    test.skip(!credentials, missingCredentialsMessage("finance"));
+  test.use({ storageState: storageStatePath("finance") });
 
-    await login(page, credentials!);
+  test("audit log page renders real table shell", async ({ page }) => {
     await page.goto("/dashboard/audit-logs");
 
     await expect(

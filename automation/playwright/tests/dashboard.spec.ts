@@ -1,17 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "../src/auth";
-import {
-  credentialsFor,
-  missingCredentialsMessage,
-} from "../src/env";
-
 test.describe("dashboard", () => {
   test("shows outlet POS sales and removes weekly movement", async ({ page }) => {
-    const credentials = credentialsFor("admin");
-    test.skip(!credentials, missingCredentialsMessage("admin"));
-
-    await login(page, credentials!);
     await page.goto("/dashboard");
 
     await expect(page.getByText("POS Sales by Outlet")).toBeVisible();

@@ -19,6 +19,8 @@ Fill `.env` with live QA credentials. The `.env` file is ignored by git.
 npm test
 ```
 
+The default run starts with the `setup` project. It logs in as admin, finance, and cashier, writes session files into `.auth/`, then the Firefox tests reuse those sessions.
+
 The suite is Firefox-only by default. Run headed or through the Playwright VS Code extension:
 
 ```bash

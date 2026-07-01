@@ -1,10 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "../src/auth";
-import {
-  credentialsFor,
-  missingCredentialsMessage,
-} from "../src/env";
 import {
   expectNoHorizontalOverflow,
   expectUsablePage,
@@ -24,13 +19,6 @@ const adminRoutes = [
 ] as const;
 
 test.describe("admin route UI health", () => {
-  test.beforeEach(async ({ page }) => {
-    const credentials = credentialsFor("admin");
-    test.skip(!credentials, missingCredentialsMessage("admin"));
-
-    await login(page, credentials!);
-  });
-
   for (const [route, heading] of adminRoutes) {
     test(`${route} renders without blank screen or console errors`, async ({
       page,

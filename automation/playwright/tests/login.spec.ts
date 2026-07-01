@@ -6,6 +6,8 @@ import {
   missingCredentialsMessage,
 } from "../src/env";
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe("login", () => {
   test("renders login form and keeps submit disabled until filled", async ({
     page,
