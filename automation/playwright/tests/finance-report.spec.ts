@@ -1,8 +1,7 @@
-import { expect, request, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
+import { authHeaders, loginApi } from "../src/api";
 import {
-  apiBaseUrl,
-  appUrl,
   credentialsFor,
   missingCredentialsMessage,
   reportMonth,
@@ -14,18 +13,10 @@ test.describe("finance monthly report", () => {
     const credentials = credentialsFor("finance");
     test.skip(!credentials, missingCredentialsMessage("finance"));
 
-    const api = await request.newContext({
-      baseURL: `${apiBaseUrl.replace(/\/$/, "")}/api`,
-      extraHTTPHeaders: {
-        Origin: appUrl,
-      },
-    });
+    const { api, cookie } = await loginApi(credentials!);
 
-    await api.post("/auth/login", {
-      data: credentials,
-    });
-
-    const response = await api.post("/finance/monthly-report", {
+    const response = await api.post("finance/monthly-report", {
+      headers: authHeaders(cookie),
       data: {
         month: reportMonth,
         sync_google: false,
@@ -55,18 +46,10 @@ test.describe("finance monthly report", () => {
     const credentials = credentialsFor("finance");
     test.skip(!credentials, missingCredentialsMessage("finance"));
 
-    const api = await request.newContext({
-      baseURL: `${apiBaseUrl.replace(/\/$/, "")}/api`,
-      extraHTTPHeaders: {
-        Origin: appUrl,
-      },
-    });
+    const { api, cookie } = await loginApi(credentials!);
 
-    await api.post("/auth/login", {
-      data: credentials,
-    });
-
-    const response = await api.post("/finance/monthly-report", {
+    const response = await api.post("finance/monthly-report", {
+      headers: authHeaders(cookie),
       data: {
         month: reportMonth,
         sync_google: true,

@@ -22,6 +22,8 @@ export const reportMonth =
 
 export const syncGoogle = process.env.WMS_SYNC_GOOGLE === "true";
 
+export const allowMutation = process.env.WMS_ALLOW_MUTATION === "true";
+
 export function credentialsFor(role: RoleName): Credentials | null {
   const [usernameKey, passwordKey] = roleEnv[role];
   const username = process.env[usernameKey];

@@ -27,8 +27,9 @@ test.describe("role entry points", () => {
     await login(page, credentials!);
 
     await expect(page).toHaveURL(/\/pos/);
+    await expect(page.getByRole("heading", { name: "Cart" })).toBeVisible();
     await expect(
-      page.getByText(/Open Shift|Cart|Confirm Payment/),
+      page.getByRole("button", { name: "Confirm Payment" }),
     ).toBeVisible();
   });
 });

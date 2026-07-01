@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
+    "test:firefox": "playwright test --project=firefox",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:finance": "playwright test tests/finance-report.spec.ts",
-    "install:browsers": "playwright install"
+    "install:browsers": "playwright install firefox",
+    "install:firefox": "playwright install firefox"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
