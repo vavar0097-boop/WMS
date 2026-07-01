@@ -7,7 +7,9 @@ import morgan from "morgan";
 
 import { logger } from "./config/logger";
 import { env } from "./config/env";
+import auditRoutes from "./modules/audit/audit.routes";
 import { errorMiddleware } from "./middleware/error.middleware";
+import { auditMiddleware } from "./middleware/audit.middleware";
 import cashierSessionRoutes from "./modules/cashier-sessions/routes/cashier-session.route";
 import itemRoutes from "./modules/items/routes/item.route";
 import financeRoutes from "./modules/finance/finance.routes";
@@ -49,6 +51,8 @@ app.use(
   }),
 );
 
+app.use(auditMiddleware);
+
 app.get("/health", (_req, res) => {
   res.status(200).json({
     success: true,
@@ -57,6 +61,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/audit-logs", auditRoutes);
 app.use("/api/cashier-sessions", cashierSessionRoutes);
 app.use("/api/pos", posRoutes);
 app.use("/api/items", itemRoutes);
