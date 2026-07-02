@@ -30,6 +30,12 @@ Build command: VITE_API_BASE_URL=https://wms-production-23d1.up.railway.app npm 
 Publish directory: apps/web/dist
 ```
 
+For a quick manual deploy, upload this zip through Netlify Drop:
+
+```txt
+deploy/netlify/wms-web-netlify.zip
+```
+
 ## After Deploy
 
 Set the Playwright production URL to the new frontend domain:
