@@ -1,0 +1,4 @@
+Enterprise WMS frontend package
+API_URL=https://wms-production-23d1.up.railway.app
+Built at=2026-07-02T20:18:56Z
+Upload contents of this folder directly into the hosting web root.

@@ -15,6 +15,28 @@ public_html/
 ```
 
 Jangan upload folder `upload-public_html`-nya, upload isi di dalamnya.
+Setelah upload, file ini harus ada persis di root web:
+
+```txt
+index.html
+deploy-check.txt
+assets/
+manifest.webmanifest
+sw.js
+```
+
+Buka ini dulu untuk memastikan hosting membaca folder yang benar:
+
+```txt
+http://app-ku.unaux.com/deploy-check.txt
+```
+
+Kalau `deploy-check.txt` belum kebuka, masalahnya ada di root folder upload,
+domain/subdomain, atau status hosting. React app belum sempat jalan.
+
+Kalau `deploy-check.txt` kebuka tapi `/login` error, upload ulang paket normal
+`upload-public_html.zip`. Jika hosting error setelah ada `.htaccess`, pakai paket
+`upload-public_html-no-htaccess.zip`, lalu akses mulai dari `/`.
 
 Package ulang frontend production dengan script ini:
 
@@ -27,6 +49,7 @@ Script ini akan membuat ulang:
 ```txt
 deploy/app-ku.unaux.com/upload-public_html/
 deploy/app-ku.unaux.com/upload-public_html.zip
+deploy/app-ku.unaux.com/upload-public_html-no-htaccess.zip
 deploy/app-ku.unaux.com/env.web.production
 ```
 
