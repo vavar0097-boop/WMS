@@ -9,6 +9,7 @@ import {
   Minus,
   Plus,
   Power,
+  Printer,
   RefreshCw,
   Search,
   ShoppingCart,
@@ -93,6 +94,15 @@ function lockPosHistory() {
     "",
     window.location.href,
   );
+}
+
+function escapeReceiptText(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 export function PosPage() {
@@ -552,6 +562,105 @@ export function PosPage() {
   async function handleLogout() {
     await logout();
     window.location.href = "/login";
+  }
+
+  function handlePrintReceipt() {
+    if (!lastSale) return;
+
+    const receiptWindow = window.open("", "_blank", "width=420,height=640");
+
+    if (!receiptWindow) {
+      toast.error(
+        "Receipt blocked",
+        "Allow pop-ups for this site, then print the receipt again.",
+      );
+      return;
+    }
+
+    const rows = lastSale.items
+      .map(
+        (item) => `
+          <tr>
+            <td>
+              <strong>${escapeReceiptText(item.name)}</strong>
+              <span>${item.quantity} x ${escapeReceiptText(
+                money(item.unit_price),
+              )}</span>
+            </td>
+            <td>${escapeReceiptText(money(item.subtotal))}</td>
+          </tr>
+        `,
+      )
+      .join("");
+
+    receiptWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>${escapeReceiptText(lastSale.sale_no)}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              padding: 24px;
+              color: #0f172a;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            }
+            .receipt { max-width: 320px; margin: 0 auto; }
+            h1 { margin: 0; font-size: 18px; text-align: center; }
+            .muted { color: #64748b; font-size: 12px; text-align: center; }
+            .meta { margin: 18px 0; border-top: 1px dashed #94a3b8; border-bottom: 1px dashed #94a3b8; padding: 12px 0; font-size: 12px; }
+            .meta div, .total div { display: flex; justify-content: space-between; gap: 12px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            td { padding: 8px 0; vertical-align: top; border-bottom: 1px solid #e2e8f0; }
+            td:last-child { text-align: right; white-space: nowrap; }
+            td span { display: block; margin-top: 4px; color: #64748b; }
+            .total { margin-top: 12px; font-size: 13px; font-weight: 700; }
+            .thanks { margin-top: 18px; text-align: center; font-size: 12px; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <main class="receipt">
+            <h1>Enterprise WMS POS</h1>
+            <p class="muted">${escapeReceiptText(currentLocationName)}</p>
+            <div class="meta">
+              <div><span>Sale</span><strong>${escapeReceiptText(
+                lastSale.sale_no,
+              )}</strong></div>
+              <div><span>Cashier</span><strong>${escapeReceiptText(
+                cashierName,
+              )}</strong></div>
+              <div><span>Shift</span><strong>${escapeReceiptText(
+                activeShiftName,
+              )}</strong></div>
+              <div><span>Payment</span><strong>${escapeReceiptText(
+                lastSale.payment_method,
+              )}</strong></div>
+            </div>
+            <table><tbody>${rows}</tbody></table>
+            <div class="total">
+              <div><span>Total</span><span>${escapeReceiptText(
+                money(lastSale.subtotal),
+              )}</span></div>
+              <div><span>Paid</span><span>${escapeReceiptText(
+                money(lastSale.paid_amount),
+              )}</span></div>
+              <div><span>Change</span><span>${escapeReceiptText(
+                money(lastSale.change_amount),
+              )}</span></div>
+            </div>
+            <p class="thanks">Thank you.</p>
+          </main>
+          <script>
+            window.addEventListener("load", () => {
+              window.print();
+            });
+          </script>
+        </body>
+      </html>
+    `);
+    receiptWindow.document.close();
   }
 
   if (isLoading) {
@@ -1257,6 +1366,14 @@ export function PosPage() {
                         <span>{money(lastSale.change_amount)}</span>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={handlePrintReceipt}
+                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white text-sm font-bold text-teal-800 transition hover:bg-teal-100"
+                    >
+                      <Printer size={16} />
+                      Print receipt
+                    </button>
                   </div>
                 ) : null}
 

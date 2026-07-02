@@ -44,6 +44,7 @@ import type {
 
 type ViewMode = "current" | "ledger";
 type MovementMode = "initial" | "adjustment";
+const LOW_STOCK_THRESHOLD = 5;
 
 const emptyPagination: Pagination = {
   page: 1,
@@ -205,6 +206,24 @@ export function StockPage() {
     [currentStocks],
   );
 
+  const zeroStockCount = useMemo(
+    () =>
+      currentStocks.filter(
+        (stock) => (Number(stock.quantity) || 0) <= 0,
+      ).length,
+    [currentStocks],
+  );
+
+  const lowStockCount = useMemo(
+    () =>
+      currentStocks.filter((stock) => {
+        const quantity = Number(stock.quantity) || 0;
+
+        return quantity > 0 && quantity <= LOW_STOCK_THRESHOLD;
+      }).length,
+    [currentStocks],
+  );
+
     const itemsById = useMemo(
     () => new Map(items.map((item) => [item.id, item])),
     [items],
@@ -349,7 +368,7 @@ export function StockPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-slate-500">
@@ -377,10 +396,21 @@ export function StockPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-slate-500">
-              Active View
+              Empty Stock
             </p>
             <p className="mt-2 text-2xl font-bold text-slate-950">
-              {view === "current" ? "Current" : "Ledger"}
+              {view === "current" ? zeroStockCount : "-"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-slate-500">
+              Low Stock
+            </p>
+            <p className="mt-2 text-2xl font-bold text-slate-950">
+              {view === "current" ? lowStockCount : "-"}
             </p>
           </CardContent>
         </Card>
@@ -561,12 +591,24 @@ export function StockPage() {
                                   stock.location_id}
                               </p>
                             </td>
-                            <td className="px-5 py-4 text-right text-base font-bold text-slate-950">
-                              {formatQuantityWithUnit(
-                                stock.quantity,
-                                stock.item_id,
-                                stock.items,
-                              )}
+                            <td className="px-5 py-4 text-right">
+                              <p className="text-base font-bold text-slate-950">
+                                {formatQuantityWithUnit(
+                                  stock.quantity,
+                                  stock.item_id,
+                                  stock.items,
+                                )}
+                              </p>
+                              {(Number(stock.quantity) || 0) <= 0 ? (
+                                <span className="mt-1 inline-flex rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">
+                                  Empty
+                                </span>
+                              ) : (Number(stock.quantity) || 0) <=
+                                LOW_STOCK_THRESHOLD ? (
+                                <span className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">
+                                  Low stock
+                                </span>
+                              ) : null}
                             </td>
                             <td className="px-5 py-4 text-slate-500">
                               {formatDate(stock.updated_at)}
