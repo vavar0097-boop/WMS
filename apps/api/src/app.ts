@@ -53,10 +53,25 @@ app.use(
 
 app.use(auditMiddleware);
 
-app.get("/health", (_req, res) => {
-  res.status(200).json({
+function healthResponse() {
+  return {
     success: true,
     message: "WMS API Online",
+    data: {
+      service: "enterprise-wms-api",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    },
+  };
+}
+
+app.get("/health", (_req, res) => {
+  res.status(200).json(healthResponse());
+});
+
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({
+    ...healthResponse(),
   });
 });
 

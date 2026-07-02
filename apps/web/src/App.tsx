@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect, useRef } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -9,7 +9,8 @@ import {
 import { PermissionRoute } from "@/features/auth/components/PermissionRoute";
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
 import { DashboardLayout } from "@/shared/layout/DashboardLayout";
-import { Toaster } from "@/shared/ui/toast";
+import { FeedbackPanel } from "@/shared/ui/feedback";
+import { Toaster, toast } from "@/shared/ui/toast";
 import { PERMISSIONS } from "@/shared/auth/permissions";
 import { getHomePathForRole } from "@/shared/auth/role-home";
 import { useAuthStore } from "@/stores/auth.store";
@@ -87,9 +88,11 @@ const AuditLogsPage = lazy(() =>
 
 function RouteLoader() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">
-      Loading...
-    </div>
+    <FeedbackPanel
+      fullScreen
+      title="Loading workspace..."
+      description="Preparing the latest WMS screen."
+    />
   );
 }
 
@@ -104,9 +107,45 @@ function RoleHomeRedirect() {
   );
 }
 
+function GlobalApiEvents() {
+  const lastApiUnavailableAt = useRef(0);
+
+  useEffect(() => {
+    function handleApiUnavailable() {
+      const now = Date.now();
+
+      if (now - lastApiUnavailableAt.current < 10_000) {
+        return;
+      }
+
+      lastApiUnavailableAt.current = now;
+      toast.error(
+        "API unavailable",
+        "Connection to the server failed. Please check your network or try again shortly.",
+      );
+    }
+
+    window.addEventListener(
+      "wms:api-unavailable",
+      handleApiUnavailable,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "wms:api-unavailable",
+        handleApiUnavailable,
+      );
+    };
+  }, []);
+
+  return null;
+}
+
 export function App() {
   return (
     <BrowserRouter>
+      <GlobalApiEvents />
+
       <Suspense fallback={<RouteLoader />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
