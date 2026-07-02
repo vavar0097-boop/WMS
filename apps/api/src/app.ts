@@ -28,10 +28,32 @@ const allowedOrigins = env.CLIENT_ORIGIN
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+const allowedOriginPatterns = [
+  /^https:\/\/[a-z0-9-]+\.netlify\.app$/i,
+  /^https:\/\/[a-z0-9-]+\.vercel\.app$/i,
+];
+
+function isAllowedOrigin(origin?: string) {
+  if (!origin) {
+    return true;
+  }
+
+  return (
+    allowedOrigins.includes(origin) ||
+    allowedOriginPatterns.some((pattern) => pattern.test(origin))
+  );
+}
 
 app.use(
   cors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked origin: ${origin}`));
+    },
     credentials: true,
   }),
 );
