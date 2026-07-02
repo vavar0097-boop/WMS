@@ -1,4 +1,4 @@
-const CACHE_NAME = "enterprise-wms-20260702171943";
+const CACHE_NAME = "enterprise-wms-20260702182350";
 const APP_SHELL = ["/", "/pos", "/manifest.webmanifest", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {

@@ -31,10 +31,6 @@ cat > "$UPLOAD_DIR/.htaccess" <<'EOF'
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
 </IfModule>
-
-<IfModule mod_headers.c>
-  Header set Service-Worker-Allowed "/"
-</IfModule>
 EOF
 
 rm -f "$DEPLOY_DIR/upload-public_html.zip"
