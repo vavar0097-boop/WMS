@@ -13,6 +13,12 @@ import { env } from "../../../config/env";
 import { AuthService } from "../services/auth.service";
 
 const isProduction = env.NODE_ENV === "production";
+const accessTokenCookieOptions = {
+  httpOnly: true,
+  sameSite: isProduction ? "none" as const : "lax" as const,
+  secure: isProduction,
+  maxAge: 24 * 60 * 60 * 1000,
+};
 const cookieOptions = {
   httpOnly: true,
   sameSite: isProduction ? "none" as const : "lax" as const,
@@ -39,7 +45,7 @@ export class AuthController {
     res.cookie(
       "access_token",
       result.accessToken,
-      cookieOptions
+      accessTokenCookieOptions
     );
 
     res.cookie(
@@ -98,7 +104,7 @@ export class AuthController {
     res.cookie(
       "access_token",
       accessToken,
-      cookieOptions
+      accessTokenCookieOptions
     );
 
     return successResponse(

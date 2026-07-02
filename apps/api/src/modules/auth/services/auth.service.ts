@@ -34,6 +34,9 @@ type AuthUser = {
   user_roles?: UserRoleRow[] | null;
 };
 
+export const ACCESS_TOKEN_EXPIRES_IN = "24h";
+export const REFRESH_TOKEN_EXPIRES_IN = "7d";
+
 export class AuthService {
   private repository = new AuthRepository();
 
@@ -46,7 +49,7 @@ export class AuthService {
       },
       env.JWT_ACCESS_SECRET,
       {
-        expiresIn: "15m",
+        expiresIn: ACCESS_TOKEN_EXPIRES_IN,
       }
     );
   }
@@ -84,7 +87,7 @@ export class AuthService {
       },
       env.JWT_REFRESH_SECRET,
       {
-        expiresIn: "7d",
+        expiresIn: REFRESH_TOKEN_EXPIRES_IN,
       }
     );
 
