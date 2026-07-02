@@ -14,15 +14,25 @@ test.describe("login", () => {
   }) => {
     await page.goto("/login");
 
-    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Hello, Welcome Back!" }),
+    ).toBeVisible();
+    await expect(page.getByText("Enterprise WMS")).toBeVisible();
     await expect(page.getByPlaceholder("Enter your username")).toBeVisible();
-    await expect(page.getByPlaceholder("Enter your password")).toBeVisible();
+    const passwordInput = page.getByPlaceholder("Enter your password");
+    await expect(passwordInput).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Show password" }),
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeDisabled();
 
     await page.getByPlaceholder("Enter your username").fill("admin");
     await expect(page.getByRole("button", { name: "Sign in" })).toBeDisabled();
 
-    await page.getByPlaceholder("Enter your password").fill("wrong-password");
+    await passwordInput.fill("wrong-password");
+    await page.getByRole("button", { name: "Show password" }).click();
+    await expect(passwordInput).toHaveAttribute("type", "text");
+    await expect(page.getByRole("button", { name: "Hide password" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
   });
 

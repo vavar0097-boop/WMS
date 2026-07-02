@@ -21,6 +21,13 @@ npm test
 
 The default run starts with the `setup` project. It logs in as admin, finance, and cashier, writes session files into `.auth/`, then the Firefox tests reuse those sessions.
 
+If the shared hosting frontend is unavailable, run the suite against a local Vite
+frontend connected to the production API:
+
+```bash
+npm run test:local
+```
+
 The suite is Firefox-only by default. Run headed or through the Playwright VS Code extension:
 
 ```bash

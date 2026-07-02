@@ -7,7 +7,11 @@ import { defineConfig, devices } from "@playwright/test";
 const configDir = path.dirname(fileURLToPath(import.meta.url));
 loadEnv({ path: path.join(configDir, ".env"), quiet: true });
 
-const appUrl = process.env.WMS_APP_URL || "https://app-ku.unaux.com";
+const startLocalWeb = process.env.WMS_START_LOCAL_WEB === "true";
+const appUrl =
+  startLocalWeb
+    ? process.env.WMS_LOCAL_APP_URL || "http://127.0.0.1:5173"
+    : process.env.WMS_APP_URL || "https://app-ku.unaux.com";
 const recordRun = process.env.WMS_RECORD === "true";
 
 export default defineConfig({
@@ -17,6 +21,7 @@ export default defineConfig({
     timeout: 10_000,
   },
   fullyParallel: false,
+  workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: [
     ["list"],
@@ -30,6 +35,16 @@ export default defineConfig({
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
+  webServer: startLocalWeb
+    ? {
+        command:
+          "VITE_API_BASE_URL=https://wms-production-23d1.up.railway.app npm run dev -- --host 127.0.0.1",
+        cwd: path.resolve(configDir, "../../apps/web"),
+        url: appUrl,
+        reuseExistingServer: true,
+        timeout: 120_000,
+      }
+    : undefined,
   projects: [
     {
       name: "setup",
