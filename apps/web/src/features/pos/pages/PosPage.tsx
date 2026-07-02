@@ -25,6 +25,7 @@ import {
 
 import { getApiErrorMessage } from "@/shared/lib/api/error";
 import { Button } from "@/shared/ui/button/button";
+import { FeedbackPanel } from "@/shared/ui/feedback";
 import { toast } from "@/shared/ui/toast";
 import { useAuthStore } from "@/stores/auth.store";
 
@@ -555,16 +556,11 @@ export function PosPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#eff7f1] px-4">
-        <div className="rounded-2xl border border-teal-100 bg-white px-6 py-5 text-center shadow-xl shadow-teal-900/10">
-          <p className="text-sm font-semibold text-slate-950">
-            Loading POS...
-          </p>
-          <p className="mt-1 text-sm text-slate-500">
-            Preparing shift and menu data.
-          </p>
-        </div>
-      </div>
+      <FeedbackPanel
+        fullScreen
+        title="Loading POS..."
+        description="Preparing shift, outlet, and menu data."
+      />
     );
   }
 

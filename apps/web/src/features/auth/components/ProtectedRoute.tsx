@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuthStore } from "@/stores/auth.store";
 import { toast } from "@/shared/ui/toast";
+import { FeedbackPanel } from "@/shared/ui/feedback";
 
 type Props = {
   children: ReactNode;
@@ -58,16 +59,11 @@ export function ProtectedRoute({ children }: Props) {
 
   if (isCheckingSession || !hasCheckedSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 text-center shadow-soft">
-          <p className="text-sm font-semibold text-slate-950">
-            Checking session...
-          </p>
-          <p className="mt-1 text-sm text-slate-500">
-            Please wait while we validate your login session.
-          </p>
-        </div>
-      </div>
+      <FeedbackPanel
+        fullScreen
+        title="Checking session..."
+        description="Validating your login before opening the workspace."
+      />
     );
   }
 

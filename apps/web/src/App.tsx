@@ -9,6 +9,7 @@ import {
 import { PermissionRoute } from "@/features/auth/components/PermissionRoute";
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
 import { DashboardLayout } from "@/shared/layout/DashboardLayout";
+import { FeedbackPanel } from "@/shared/ui/feedback";
 import { Toaster, toast } from "@/shared/ui/toast";
 import { PERMISSIONS } from "@/shared/auth/permissions";
 import { getHomePathForRole } from "@/shared/auth/role-home";
@@ -87,9 +88,11 @@ const AuditLogsPage = lazy(() =>
 
 function RouteLoader() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">
-      Loading...
-    </div>
+    <FeedbackPanel
+      fullScreen
+      title="Loading workspace..."
+      description="Preparing the latest WMS screen."
+    />
   );
 }
 
