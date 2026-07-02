@@ -1326,7 +1326,7 @@ export function PosPage() {
                       <div>
                         <p className="font-bold">{lastSale.sale_no}</p>
                         <p className="text-xs font-semibold">
-                          {lastSale.payment_method} paid
+                          {lastSale.payment_method} paid and recorded
                         </p>
                       </div>
                       <button
@@ -1366,14 +1366,24 @@ export function PosPage() {
                         <span>{money(lastSale.change_amount)}</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handlePrintReceipt}
-                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white text-sm font-bold text-teal-800 transition hover:bg-teal-100"
-                    >
-                      <Printer size={16} />
-                      Print receipt
-                    </button>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={handlePrintReceipt}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white text-sm font-bold text-teal-800 transition hover:bg-teal-100"
+                      >
+                        <Printer size={16} />
+                        Print receipt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLastSale(null)}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-teal-700 text-sm font-bold text-white transition hover:bg-teal-800"
+                      >
+                        <Check size={16} />
+                        Skip receipt
+                      </button>
+                    </div>
                   </div>
                 ) : null}
 
