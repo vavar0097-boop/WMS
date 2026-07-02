@@ -134,21 +134,21 @@ export function AppSidebar({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 shrink-0 border-r border-teal-100 bg-white transition-transform lg:sticky lg:top-0 lg:z-auto lg:block lg:h-screen lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 w-64 shrink-0 border-r border-teal-100 bg-white/92 shadow-xl shadow-teal-900/5 backdrop-blur-xl transition-transform lg:sticky lg:top-0 lg:z-auto lg:block lg:h-screen lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-20 items-center justify-between gap-4 px-5 lg:h-24 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4 px-4 lg:h-16 lg:px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-indigo-600 text-white shadow-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-sky-500 text-white shadow-sm">
               <Sparkles size={21} />
             </div>
 
             <div>
-              <p className="text-base font-bold text-slate-950">
+              <p className="text-sm font-bold text-slate-950">
                 Enterprise WMS
               </p>
-              <p className="text-sm text-teal-700">
+              <p className="text-xs text-slate-500">
                 Warehouse Control
               </p>
             </div>
@@ -164,7 +164,7 @@ export function AppSidebar({
           </button>
         </div>
 
-        <nav className="space-y-1 px-3 py-4 lg:px-4 lg:py-6">
+        <nav className="space-y-1 px-3 py-3">
           {visibleItems.map((item) => {
             const Icon = item.icon;
 
@@ -188,10 +188,10 @@ export function AppSidebar({
                 onClick={onClose}
                 className={({ isActive }) =>
                   [
-                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition",
+                    "flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-bold transition",
                     isActive
-                      ? "bg-gradient-to-r from-teal-500 to-indigo-600 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-950",
+                      ? "bg-gradient-to-r from-teal-600 to-emerald-500 text-white shadow-sm shadow-teal-900/10"
+                      : "text-slate-600 hover:bg-teal-50 hover:text-teal-900",
                   ].join(" ")
                 }
               >
@@ -199,7 +199,7 @@ export function AppSidebar({
                   <>
                     <span
                       className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-xl transition",
+                        "flex h-7 w-7 items-center justify-center rounded-lg transition",
                         isActive ? "bg-white/20 text-white" : item.color,
                       )}
                     >

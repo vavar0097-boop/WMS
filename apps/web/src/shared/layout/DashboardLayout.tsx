@@ -26,8 +26,16 @@ export function DashboardLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] text-slate-950">
-      <div className="flex min-h-screen">
+    <div className="min-h-screen bg-[#dceef2] text-slate-950">
+      <div
+        className="fixed inset-0 opacity-60"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px)",
+          backgroundSize: "44px 44px",
+        }}
+      />
+      <div className="relative flex min-h-screen">
         <AppSidebar
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
@@ -36,7 +44,7 @@ export function DashboardLayout() {
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader onOpenMenu={() => setSidebarOpen(true)} />
 
-          <main className="flex-1 overflow-x-hidden p-4 lg:p-8">
+          <main className="flex-1 overflow-x-hidden p-3 sm:p-4 lg:p-6">
             <Outlet />
           </main>
         </div>

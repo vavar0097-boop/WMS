@@ -555,8 +555,8 @@ export function PosPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f4f7f2] px-4">
-        <div className="rounded-xl border border-emerald-100 bg-white px-6 py-5 text-center shadow-sm">
+      <div className="flex min-h-screen items-center justify-center bg-[#eff7f1] px-4">
+        <div className="rounded-2xl border border-teal-100 bg-white px-6 py-5 text-center shadow-xl shadow-teal-900/10">
           <p className="text-sm font-semibold text-slate-950">
             Loading POS...
           </p>
@@ -569,8 +569,8 @@ export function PosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f7f2] text-slate-950">
-      <header className="sticky top-0 z-30 border-b border-emerald-100 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+    <div className="min-h-screen bg-[#eff7f1] text-slate-950">
+      <header className="sticky top-0 z-30 border-b border-teal-100 bg-white/95 px-4 py-2 shadow-sm backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <button
@@ -579,7 +579,7 @@ export function PosPage() {
                 setDrawerOpen(true);
                 setDrawerAction(null);
               }}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-teal-100 bg-white text-slate-700 shadow-sm"
               aria-label="Open cashier menu"
             >
               <Menu size={20} />
@@ -591,7 +591,7 @@ export function PosPage() {
               <p className="flex min-w-0 items-center gap-2 truncate text-xs font-medium text-slate-500">
                 <span
                   className={`h-2 w-2 shrink-0 rounded-full ${
-                    session ? "bg-emerald-500" : "bg-slate-300"
+                    session ? "bg-teal-500" : "bg-slate-300"
                   }`}
                 />
                 <span className="truncate">
@@ -607,7 +607,7 @@ export function PosPage() {
               <button
                 type="button"
                 onClick={handleInstall}
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 px-3 text-sm font-semibold text-emerald-800"
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 text-sm font-semibold text-teal-800"
               >
                 <Boxes size={16} />
                 Install
@@ -616,7 +616,7 @@ export function PosPage() {
             <button
               type="button"
               onClick={loadPosData}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-teal-100 bg-white text-slate-600 shadow-sm"
               aria-label="Refresh POS"
             >
               <RefreshCw size={17} />
@@ -633,8 +633,8 @@ export function PosPage() {
             aria-label="Close cashier menu"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(92vw,380px)] flex-col bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4">
+          <aside className="absolute inset-y-0 left-0 flex w-[min(92vw,380px)] flex-col border-r border-teal-100 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-teal-100 px-4 py-4">
               <div>
                 <p className="text-base font-bold">Cashier Menu</p>
                 <p className="text-xs font-medium text-slate-500">
@@ -654,15 +654,15 @@ export function PosPage() {
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
               {session ? (
                 <div className="mb-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-lg bg-emerald-50 p-3">
-                    <p className="text-xs font-semibold uppercase text-emerald-700">
+                  <div className="rounded-xl bg-teal-50 p-3">
+                    <p className="text-xs font-semibold uppercase text-teal-700">
                       Cash
                     </p>
                     <p className="mt-1 text-base font-bold">
                       {money(session.calculated_expected_cash)}
                     </p>
                   </div>
-                  <div className="rounded-lg bg-slate-50 p-3">
+                  <div className="rounded-xl bg-slate-50 p-3">
                     <p className="text-xs font-semibold uppercase text-slate-500">
                       Sales
                     </p>
@@ -678,7 +678,7 @@ export function PosPage() {
                   type="button"
                   disabled={!session}
                   onClick={() => setDrawerAction("expense")}
-                  className="flex h-12 items-center gap-3 rounded-lg border border-slate-200 px-3 text-sm font-bold disabled:opacity-50"
+                  className="flex h-12 items-center gap-3 rounded-xl border border-teal-100 px-3 text-sm font-bold transition hover:bg-teal-50 disabled:opacity-50"
                 >
                   <WalletCards size={18} />
                   Expense
@@ -687,7 +687,7 @@ export function PosPage() {
                   type="button"
                   disabled={!session}
                   onClick={() => setDrawerAction("deposit")}
-                  className="flex h-12 items-center gap-3 rounded-lg border border-slate-200 px-3 text-sm font-bold disabled:opacity-50"
+                  className="flex h-12 items-center gap-3 rounded-xl border border-teal-100 px-3 text-sm font-bold transition hover:bg-teal-50 disabled:opacity-50"
                 >
                   <Banknote size={18} />
                   Setor Kas
@@ -696,7 +696,7 @@ export function PosPage() {
                   type="button"
                   disabled={!session}
                   onClick={() => setDrawerAction("close")}
-                  className="flex h-12 items-center gap-3 rounded-lg border border-rose-200 px-3 text-sm font-bold text-rose-700 disabled:opacity-50"
+                  className="flex h-12 items-center gap-3 rounded-xl border border-rose-200 px-3 text-sm font-bold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
                 >
                   <Power size={18} />
                   Close Shift
@@ -704,7 +704,7 @@ export function PosPage() {
                 <button
                   type="button"
                   onClick={handleFullscreen}
-                  className="flex h-12 items-center gap-3 rounded-lg border border-slate-200 px-3 text-sm font-bold"
+                  className="flex h-12 items-center gap-3 rounded-xl border border-teal-100 px-3 text-sm font-bold transition hover:bg-teal-50"
                 >
                   <Maximize2 size={18} />
                   Fullscreen
@@ -713,7 +713,7 @@ export function PosPage() {
                   <button
                     type="button"
                     onClick={handleInstall}
-                    className="flex h-12 items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-bold text-emerald-800"
+                    className="flex h-12 items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 px-3 text-sm font-bold text-teal-800"
                   >
                     <Boxes size={18} />
                     Install App
@@ -723,7 +723,7 @@ export function PosPage() {
                   type="button"
                   onClick={handleLogout}
                   disabled={isLoggingOut}
-                  className="flex h-12 items-center gap-3 rounded-lg border border-slate-200 px-3 text-sm font-bold"
+                  className="flex h-12 items-center gap-3 rounded-xl border border-teal-100 px-3 text-sm font-bold transition hover:bg-teal-50"
                 >
                   <LogOut size={18} />
                   Logout
@@ -733,7 +733,7 @@ export function PosPage() {
               {drawerAction === "expense" ? (
                 <form
                   onSubmit={handleExpense}
-                  className="mt-5 space-y-3 rounded-lg bg-slate-50 p-3"
+                  className="mt-5 space-y-3 rounded-xl bg-slate-50 p-3"
                 >
                   <p className="text-sm font-bold">Expense</p>
                   <input
@@ -775,7 +775,7 @@ export function PosPage() {
               {drawerAction === "deposit" ? (
                 <form
                   onSubmit={handleDeposit}
-                  className="mt-5 space-y-3 rounded-lg bg-slate-50 p-3"
+                  className="mt-5 space-y-3 rounded-xl bg-slate-50 p-3"
                 >
                   <p className="text-sm font-bold">Setor Kas</p>
                   <input
@@ -817,7 +817,7 @@ export function PosPage() {
               {drawerAction === "close" ? (
                 <form
                   onSubmit={handleCloseSession}
-                  className="mt-5 space-y-3 rounded-lg bg-slate-50 p-3"
+                  className="mt-5 space-y-3 rounded-xl bg-slate-50 p-3"
                 >
                   <p className="text-sm font-bold">Close Shift</p>
                   <input
@@ -855,9 +855,9 @@ export function PosPage() {
 
       {!session ? (
         <main className="mx-auto grid max-w-5xl gap-6 px-4 py-6 lg:grid-cols-[1fr_380px]">
-          <section className="rounded-xl border border-emerald-100 bg-white p-6 shadow-sm">
+          <section className="rounded-2xl border border-teal-100 bg-white p-6 shadow-xl shadow-teal-900/5">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-800">
                 <Power size={22} />
               </div>
               <div>
@@ -881,7 +881,7 @@ export function PosPage() {
                   onChange={(event) =>
                     setSelectedLocationId(event.target.value)
                   }
-                  className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  className="h-11 w-full rounded-xl border border-teal-100 bg-white px-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
                   required
                 >
                   <option value="">Select outlet</option>
@@ -902,7 +902,7 @@ export function PosPage() {
                   onChange={(event) =>
                     setShiftName(event.target.value)
                   }
-                  className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  className="h-11 w-full rounded-xl border border-teal-100 px-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
                   required
                 />
               </label>
@@ -918,7 +918,7 @@ export function PosPage() {
                   onChange={(event) =>
                     setOpeningCash(event.target.value)
                   }
-                  className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  className="h-11 w-full rounded-xl border border-teal-100 px-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
                 />
               </label>
 
@@ -932,11 +932,11 @@ export function PosPage() {
             </form>
           </section>
 
-          <aside className="rounded-xl border border-amber-100 bg-amber-50 p-5">
-            <h2 className="text-base font-bold text-amber-950">
+          <aside className="rounded-2xl border border-teal-100 bg-white/90 p-5 shadow-xl shadow-teal-900/5">
+            <h2 className="text-base font-bold text-slate-950">
               Outlet Checklist
             </h2>
-            <div className="mt-4 space-y-3 text-sm text-amber-900">
+            <div className="mt-4 space-y-3 text-sm text-slate-700">
               <p className="flex items-center gap-2">
                 <Check size={16} />
                 POS menu visible and available
@@ -955,7 +955,7 @@ export function PosPage() {
       ) : (
         <main className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[1fr_390px]">
           <section className="min-w-0 space-y-4">
-            <div className="space-y-3">
+            <div className="space-y-3 rounded-2xl border border-teal-100 bg-white/70 p-3 shadow-sm backdrop-blur">
               <div className="relative">
                 <Search
                   size={16}
@@ -965,7 +965,7 @@ export function PosPage() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search menu"
-                  className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  className="h-11 w-full rounded-xl border border-teal-100 bg-white pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
                 />
               </div>
 
@@ -975,10 +975,10 @@ export function PosPage() {
                     key={value}
                     type="button"
                     onClick={() => setCategory(value)}
-                    className={`h-10 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition ${
+                    className={`h-10 whitespace-nowrap rounded-xl px-3 text-sm font-bold transition ${
                       category === value
-                        ? "bg-emerald-700 text-white"
-                        : "bg-emerald-50 text-emerald-800"
+                        ? "bg-teal-700 text-white shadow-sm"
+                        : "border border-teal-100 bg-white text-slate-700 hover:bg-teal-50"
                     }`}
                   >
                     {value === "ALL" ? "All" : value}
@@ -999,11 +999,11 @@ export function PosPage() {
                 return (
                   <div
                     key={item.id}
-                    className="min-h-[150px] rounded-xl border border-emerald-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+                    className="min-h-[150px] rounded-2xl border border-teal-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-lg hover:shadow-teal-900/10"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold uppercase text-emerald-700">
+                        <p className="inline-flex rounded-md bg-teal-50 px-2 py-1 text-[11px] font-bold uppercase text-teal-700">
                           {item.category === "Snack"
                             ? "Makanan"
                             : item.category || "Menu"}
@@ -1042,7 +1042,7 @@ export function PosPage() {
                           type="button"
                           onClick={() => addToCart(item)}
                           disabled={isOutOfStock || isAtStockLimit}
-                          className="flex h-9 w-9 items-center justify-center text-emerald-700"
+                          className="flex h-9 w-9 items-center justify-center rounded-r-lg bg-teal-700 text-white disabled:bg-slate-100 disabled:text-slate-300"
                           aria-label={`Increase ${item.menu_name}`}
                         >
                           <Plus size={15} />
@@ -1061,9 +1061,9 @@ export function PosPage() {
             </div>
           </section>
 
-          <aside className="lg:sticky lg:top-[76px] lg:h-[calc(100vh-92px)]">
-            <div className="flex h-full flex-col rounded-xl border border-emerald-100 bg-white shadow-sm">
-              <div className="border-b border-slate-100 p-4">
+          <aside className="lg:sticky lg:top-[68px] lg:h-[calc(100vh-84px)]">
+            <div className="flex h-full flex-col rounded-2xl border border-teal-100 bg-white shadow-xl shadow-teal-900/5">
+              <div className="border-b border-teal-100 p-4">
                 <div className="flex items-center justify-between">
                   <h2 className="flex items-center gap-2 text-lg font-bold">
                     <ShoppingCart size={20} />
@@ -1084,7 +1084,7 @@ export function PosPage() {
 
               <div className="min-h-0 flex-1 overflow-y-auto p-4">
                 {cartItems.length === 0 ? (
-                  <div className="flex h-44 items-center justify-center rounded-xl bg-slate-50 text-center text-sm font-medium text-slate-500">
+                  <div className="flex h-44 items-center justify-center rounded-2xl bg-slate-50 text-center text-sm font-medium text-slate-500">
                     No items selected.
                   </div>
                 ) : (
@@ -1092,7 +1092,7 @@ export function PosPage() {
                     {cartItems.map((item) => (
                       <div
                         key={item.menuItem.id}
-                        className="rounded-xl border border-slate-100 p-3"
+                        className="rounded-2xl border border-teal-100 p-3"
                       >
                         <div className="flex justify-between gap-3">
                           <div className="min-w-0">
@@ -1112,7 +1112,7 @@ export function PosPage() {
                         </div>
 
                         <div className="mt-3 flex items-center justify-between">
-                          <div className="inline-flex items-center rounded-lg border border-slate-200">
+                          <div className="inline-flex items-center rounded-xl border border-teal-100">
                             <button
                               type="button"
                               onClick={() =>
@@ -1144,7 +1144,7 @@ export function PosPage() {
                 )}
               </div>
 
-              <div className="space-y-4 border-t border-slate-100 p-4">
+              <div className="space-y-4 border-t border-teal-100 p-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-slate-500">
                     Total
@@ -1158,9 +1158,9 @@ export function PosPage() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("CASH")}
-                    className={`flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-bold ${
+                    className={`flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-bold ${
                       paymentMethod === "CASH"
-                        ? "bg-emerald-700 text-white"
+                        ? "bg-teal-700 text-white"
                         : "bg-slate-100 text-slate-700"
                     }`}
                   >
@@ -1170,9 +1170,9 @@ export function PosPage() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("NONCASH")}
-                    className={`flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-bold ${
+                    className={`flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-bold ${
                       paymentMethod === "NONCASH"
-                        ? "bg-emerald-700 text-white"
+                        ? "bg-teal-700 text-white"
                         : "bg-slate-100 text-slate-700"
                     }`}
                   >
@@ -1194,14 +1194,14 @@ export function PosPage() {
                         setPaidAmount(event.target.value)
                       }
                       placeholder={String(subtotal)}
-                      className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                      className="h-11 w-full rounded-xl border border-teal-100 px-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
                     />
-                    <span className="block text-sm font-semibold text-emerald-700">
+                    <span className="block text-sm font-semibold text-teal-700">
                       Change {money(changeAmount)}
                     </span>
                   </label>
                 ) : (
-                  <div className="rounded-lg bg-slate-50 p-3 text-sm font-semibold text-slate-600">
+                  <div className="rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-600">
                     Noncash payment selected.
                   </div>
                 )}
@@ -1210,13 +1210,13 @@ export function PosPage() {
                   type="button"
                   onClick={handleCheckout}
                   disabled={!canCheckout}
-                  className="h-12 w-full"
+                  className="h-12 w-full rounded-xl"
                 >
                   {isPaying ? "Processing..." : "Confirm Payment"}
                 </Button>
 
                 {lastSale ? (
-                  <div className="space-y-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+                  <div className="space-y-3 rounded-xl bg-teal-50 p-3 text-sm text-teal-900">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-bold">{lastSale.sale_no}</p>

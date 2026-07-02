@@ -19,13 +19,13 @@ type ButtonProps =
 
 const variantClasses: Record<ButtonVariant, string> = {
   default:
-    "bg-slate-950 text-white hover:bg-slate-800 border border-slate-950",
+    "bg-gradient-to-r from-teal-600 to-emerald-500 text-white hover:from-teal-700 hover:to-emerald-600 border border-teal-600 shadow-sm shadow-teal-900/10",
   secondary:
-    "bg-slate-100 text-slate-900 hover:bg-slate-200 border border-slate-200",
+    "bg-teal-50 text-teal-900 hover:bg-teal-100 border border-teal-100",
   outline:
-    "bg-white text-slate-800 hover:bg-slate-50 border border-slate-200",
+    "bg-white text-slate-800 hover:bg-teal-50 border border-teal-100",
   ghost:
-    "bg-transparent text-slate-700 hover:bg-slate-100 border border-transparent",
+    "bg-transparent text-slate-700 hover:bg-teal-50 border border-transparent",
   danger:
     "bg-red-600 text-white hover:bg-red-700 border border-red-600",
 };
