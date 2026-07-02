@@ -1,0 +1,1 @@
+import{o as r}from"./index-CBZJRYJ-.js";function g(e){var s,a,n,o;return r.isAxiosError(e)?((a=(s=e.response)==null?void 0:s.data)==null?void 0:a.message)||((o=(n=e.response)==null?void 0:n.data)==null?void 0:o.error)||e.message||"Request failed":e instanceof Error?e.message:"Unexpected error"}export{g};

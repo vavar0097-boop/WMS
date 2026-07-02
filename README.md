@@ -66,8 +66,9 @@ terminal output.
 The app uses Supabase for runtime data access through `SUPABASE_URL` and
 `SUPABASE_SERVICE_ROLE_KEY`.
 
-For database migrations from this repo, add one of these to `.env` or
-`apps/api/.env`:
+Copy `.env.example` or `apps/api/.env.example` to your local `.env` file, then
+fill the runtime secrets. For database migrations from this repo, add one of
+these to `.env` or `apps/api/.env`:
 
 ```env
 DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres

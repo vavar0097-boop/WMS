@@ -16,8 +16,11 @@ coverage/
 .env.*.local
 apps/api/.env
 apps/web/.env
+.auth/
 
 # logs
+logs/
+**/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
