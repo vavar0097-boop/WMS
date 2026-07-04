@@ -9,8 +9,6 @@ apps/
 database/
   migrations/          Canonical SQL migrations
   seeds/               Seed data placeholders
-deploy/
-  app-ku.unaux.com/    Legacy packaged web build for shared hosting deploys
 docs/                  Architecture, API, and database notes
 packages/
   shared-types/        Cross-app TypeScript types
