@@ -9,25 +9,17 @@ import {
   TrendingUp,
   User,
 } from "lucide-react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 
 import { getApiErrorMessage } from "@/shared/lib/api/error";
 import { Button } from "@/shared/ui/button/button";
 import { Input } from "@/shared/ui/input/input";
 import { toast } from "@/shared/ui/toast";
 import { useAuthStore } from "@/stores/auth.store";
-import {
-  getHomePathForRole,
-  getSafePathForRole,
-} from "@/shared/auth/role-home";
-
-type LocationState = {
-  from?: string;
-};
+import { getHomePathForRole } from "@/shared/auth/role-home";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const { login, user, isAuthenticated, isLoggingIn } = useAuthStore();
 
@@ -35,8 +27,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const state = location.state as LocationState | null;
-  const redirectTo = getSafePathForRole(user?.role, state?.from);
+  const redirectTo = getHomePathForRole(user?.role);
 
   const canSubmit =
     username.trim().length > 0 &&
@@ -74,7 +65,7 @@ export function LoginPage() {
         "Welcome back to Enterprise WMS.",
       );
 
-      navigate(getSafePathForRole(loggedInUser?.role, state?.from), {
+      navigate(getHomePathForRole(loggedInUser?.role), {
         replace: true,
       });
     } catch (error) {

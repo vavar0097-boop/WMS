@@ -561,7 +561,7 @@ export function PosPage() {
 
   async function handleLogout() {
     await logout();
-    window.location.href = "/login";
+    window.location.replace("/login");
   }
 
   function handlePrintReceipt() {
