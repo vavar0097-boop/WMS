@@ -15,6 +15,28 @@ import {
   CashierSessionRepository,
 } from "../repositories/cashier-session.repository";
 
+function uniqueViolationText(error: unknown) {
+  if (typeof error !== "object" || error === null) {
+    return "";
+  }
+
+  return [
+    "message" in error ? (error as { message?: unknown }).message : "",
+    "details" in error ? (error as { details?: unknown }).details : "",
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+}
+
+function isUniqueViolation(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "23505"
+  );
+}
+
 export class CashierSessionService {
   private repository =
     new CashierSessionRepository();
@@ -92,12 +114,44 @@ export class CashierSessionService {
       );
     }
 
-    const session =
+    const existingOutletSession =
       await this.repository
-        .create(
-          cashierId,
-          dto
+        .findOpenSessionByLocationId(
+          dto.location_id
         );
+
+    if (existingOutletSession) {
+      throw new BadRequestError(
+        "This outlet still has an open shift. Close the previous shift before opening a new one."
+      );
+    }
+
+    let session;
+
+    try {
+      session =
+        await this.repository
+          .create(
+            cashierId,
+            dto
+      );
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        const text = uniqueViolationText(error);
+
+        if (text.includes("one_open_per_cashier")) {
+          throw new BadRequestError(
+            "Cashier already has an open session"
+          );
+        }
+
+        throw new BadRequestError(
+          "This outlet still has an open shift. Close the previous shift before opening a new one."
+        );
+      }
+
+      throw error;
+    }
 
     return this.repository
       .findSummaryById(

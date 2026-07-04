@@ -50,6 +50,8 @@ type ReceiptItem = {
 
 type DrawerAction = "expense" | "deposit" | "close" | null;
 
+const shiftOptions = ["Pagi", "Siang"] as const;
+
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{
@@ -120,7 +122,7 @@ export function PosPage() {
     useState<"CASH" | "NONCASH">("CASH");
   const [paidAmount, setPaidAmount] = useState("");
   const [selectedLocationId, setSelectedLocationId] = useState("");
-  const [shiftName, setShiftName] = useState("Pagi");
+  const [shiftName, setShiftName] = useState("");
   const [openingCash, setOpeningCash] = useState("0");
   const [actualCash, setActualCash] = useState("");
   const [closeNotes, setCloseNotes] = useState("");
@@ -367,10 +369,10 @@ export function PosPage() {
   async function handleOpenSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!selectedLocationId || !shiftName.trim()) {
+    if (!selectedLocationId || !shiftName) {
       toast.error(
         "Shift incomplete",
-        "Choose outlet location and shift name.",
+        "Choose outlet location and shift.",
       );
       return;
     }
@@ -380,7 +382,7 @@ export function PosPage() {
     try {
       const opened = await posService.openSession({
         location_id: selectedLocationId,
-        shift_name: shiftName.trim(),
+        shift_name: shiftName,
         opening_cash: numberValue(openingCash),
       });
 
@@ -450,10 +452,14 @@ export function PosPage() {
 
     if (!session) return;
 
-    if (!expenseCategory.trim() || !expenseReason.trim()) {
+    if (
+      !expenseCategory.trim() ||
+      !expenseReason.trim() ||
+      numberValue(expenseAmount) <= 0
+    ) {
       toast.error(
         "Expense incomplete",
-        "Category and reason are required.",
+        "Category, amount greater than 0, and reason are required.",
       );
       return;
     }
@@ -490,10 +496,10 @@ export function PosPage() {
 
     if (!session) return;
 
-    if (!depositReceiver.trim()) {
+    if (!depositReceiver.trim() || numberValue(depositAmount) <= 0) {
       toast.error(
         "Deposit incomplete",
-        "Receiver name is required.",
+        "Amount greater than 0 and receiver name are required.",
       );
       return;
     }
@@ -530,6 +536,14 @@ export function PosPage() {
     event.preventDefault();
 
     if (!session) return;
+
+    if (!actualCash.trim()) {
+      toast.error(
+        "Close shift incomplete",
+        "Actual cash is required.",
+      );
+      return;
+    }
 
     setIsClosing(true);
 
@@ -848,16 +862,18 @@ export function PosPage() {
                     }
                     className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none"
                     placeholder="Category"
+                    required
                   />
                   <input
                     type="number"
-                    min="0"
+                    min="1"
                     value={expenseAmount}
                     onChange={(event) =>
                       setExpenseAmount(event.target.value)
                     }
                     className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none"
                     placeholder="Amount"
+                    required
                   />
                   <input
                     value={expenseReason}
@@ -866,6 +882,7 @@ export function PosPage() {
                     }
                     className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none"
                     placeholder="Reason"
+                    required
                   />
                   <Button
                     type="submit"
@@ -885,13 +902,14 @@ export function PosPage() {
                   <p className="text-sm font-bold">Setor Kas</p>
                   <input
                     type="number"
-                    min="0"
+                    min="1"
                     value={depositAmount}
                     onChange={(event) =>
                       setDepositAmount(event.target.value)
                     }
                     className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none"
                     placeholder="Amount"
+                    required
                   />
                   <input
                     value={depositReceiver}
@@ -900,6 +918,7 @@ export function PosPage() {
                     }
                     className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none"
                     placeholder="Received by"
+                    required
                   />
                   <input
                     value={depositNotes}
@@ -934,6 +953,7 @@ export function PosPage() {
                     }
                     className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none"
                     placeholder="Actual cash"
+                    required
                   />
                   <input
                     value={closeNotes}
@@ -1002,14 +1022,21 @@ export function PosPage() {
                 <span className="text-sm font-semibold text-slate-700">
                   Shift
                 </span>
-                <input
+                <select
                   value={shiftName}
                   onChange={(event) =>
                     setShiftName(event.target.value)
                   }
-                  className="h-11 w-full rounded-xl border border-teal-100 px-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
+                  className="h-11 w-full rounded-xl border border-teal-100 bg-white px-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
                   required
-                />
+                >
+                  <option value="">Select shift</option>
+                  {shiftOptions.map((shift) => (
+                    <option key={shift} value={shift}>
+                      {shift}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label className="space-y-2">
@@ -1024,6 +1051,7 @@ export function PosPage() {
                     setOpeningCash(event.target.value)
                   }
                   className="h-11 w-full rounded-xl border border-teal-100 px-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
+                  required
                 />
               </label>
 

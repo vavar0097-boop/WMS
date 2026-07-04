@@ -11,7 +11,8 @@ const roleEnv: Record<RoleName, [string, string]> = {
   cashier: ["WMS_CASHIER_USERNAME", "WMS_CASHIER_PASSWORD"],
 };
 
-export const appUrl = process.env.WMS_APP_URL || "https://app-ku.unaux.com";
+export const appUrl =
+  process.env.WMS_APP_URL || "https://dodolanku.netlify.app";
 
 export const apiBaseUrl =
   process.env.WMS_API_BASE_URL ||

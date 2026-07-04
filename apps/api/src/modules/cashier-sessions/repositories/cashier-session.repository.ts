@@ -41,6 +41,27 @@ export class CashierSessionRepository {
     return data;
   }
 
+  async findOpenSessionByLocationId(
+    locationId: string
+  ) {
+    const { data, error } = await db
+      .from("v_cashier_session_summary")
+      .select("*")
+      .eq("location_id", locationId)
+      .eq("status", "OPEN")
+      .order("opened_at", {
+        ascending: true,
+      })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
   async findSessionById(
     sessionId: string
   ) {

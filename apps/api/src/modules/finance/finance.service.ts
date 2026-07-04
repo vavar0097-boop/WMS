@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { BadRequestError } from "../../utils/errors";
 import {
   FinanceRepository,
@@ -85,9 +87,9 @@ function cleanPayload(
     throw new BadRequestError("Invalid finance transaction type");
   }
 
-  if (!category || !Number.isFinite(amount) || amount < 0) {
+  if (!category || !Number.isFinite(amount) || amount <= 0) {
     throw new BadRequestError(
-      "Category and valid amount are required",
+      "Category and amount greater than 0 are required",
     );
   }
 
@@ -279,8 +281,23 @@ function cleanDailyPurchasePayload(
     is_edited: Boolean(item.is_edited),
   }));
 
+  const invalidItem = items.find(
+    (item) =>
+      !item.item_name ||
+      !item.category ||
+      item.qty <= 0 ||
+      item.unit_price <= 0 ||
+      item.subtotal <= 0,
+  );
+
   if (items.length === 0) {
     throw new BadRequestError("At least one purchase item is required");
+  }
+
+  if (invalidItem) {
+    throw new BadRequestError(
+      "Purchase item name, category, quantity, and price greater than 0 are required",
+    );
   }
 
   return {
@@ -308,12 +325,26 @@ function quoteSheetName(name: string) {
   return `'${name.replace(/'/g, "''")}'`;
 }
 
+function normalizeGooglePrivateKey(value?: string) {
+  if (!value) return "";
+
+  return value
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\\\r?\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .trim()
+    .replace(/\\$/g, "");
+}
+
 async function syncGoogleSheet(params: {
   month: string;
   sheets: Record<string, Array<Array<string | number>>>;
 }) {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const privateKey = normalizeGooglePrivateKey(
+    process.env.GOOGLE_PRIVATE_KEY,
+  );
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
 
   if (!clientEmail || !privateKey || !spreadsheetId) {
@@ -321,6 +352,14 @@ async function syncGoogleSheet(params: {
       synced: false,
       reason: "Google Sheets env is not configured",
     };
+  }
+
+  try {
+    crypto.createPrivateKey(privateKey);
+  } catch {
+    throw new BadRequestError(
+      "Google private key format is invalid. Recheck GOOGLE_PRIVATE_KEY in apps/api/.env",
+    );
   }
 
   const jwt = await import("jsonwebtoken");
@@ -351,7 +390,29 @@ async function syncGoogleSheet(params: {
   });
 
   if (!tokenResponse.ok) {
-    throw new BadRequestError("Google authentication failed");
+    const errorText = await tokenResponse.text();
+    let reason = "Google authentication failed";
+
+    try {
+      const errorBody = JSON.parse(errorText) as {
+        error?: string;
+        error_description?: string;
+      };
+
+      reason = [
+        reason,
+        errorBody.error,
+        errorBody.error_description,
+      ]
+        .filter(Boolean)
+        .join(": ");
+    } catch {
+      if (errorText.trim()) {
+        reason = `${reason}: ${errorText.slice(0, 200)}`;
+      }
+    }
+
+    throw new BadRequestError(reason);
   }
 
   const tokenBody = (await tokenResponse.json()) as {
@@ -468,6 +529,7 @@ async function syncGoogleSheet(params: {
   return {
     synced: true,
     spreadsheet_id: spreadsheetId,
+    spreadsheet_url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
     sheet_count: Object.keys(params.sheets).length,
   };
 }

@@ -59,6 +59,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_cashier_sessions_one_open_per_cashier
 ON public.cashier_sessions(cashier_id)
 WHERE status = 'OPEN';
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cashier_sessions_one_open_per_location
+ON public.cashier_sessions(location_id)
+WHERE status = 'OPEN';
+
 CREATE INDEX IF NOT EXISTS idx_cashier_sessions_cashier_id
 ON public.cashier_sessions(cashier_id);
 

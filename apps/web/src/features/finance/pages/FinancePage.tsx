@@ -73,6 +73,12 @@ function money(value: number | string) {
   }).format(Number(value) || 0);
 }
 
+function numericValue(value: unknown) {
+  const amount = Number(value);
+
+  return Number.isFinite(amount) ? amount : 0;
+}
+
 function toPayload(form: FinanceForm): FinancePayload {
   return {
     transaction_date: form.transaction_date,
@@ -202,10 +208,10 @@ export function FinancePage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!form.category.trim() || Number(form.amount) < 0) {
+    if (!form.category.trim() || numericValue(form.amount) <= 0) {
       toast.error(
         "Finance form incomplete",
-        "Category and valid amount are required.",
+        "Category and amount greater than 0 are required.",
       );
       return;
     }
@@ -358,6 +364,28 @@ export function FinancePage() {
       return;
     }
 
+    const invalidItem = purchaseItems.find(
+      (item) =>
+        !item.item_name.trim() ||
+        !item.category.trim() ||
+        numericValue(item.qty) <= 0 ||
+        numericValue(item.unit_price) <= 0 ||
+        numericValue(item.subtotal) <= 0,
+    );
+
+    if (invalidItem) {
+      toast.error(
+        "Purchase item incomplete",
+        "Item name, category, quantity, and price greater than 0 are required.",
+      );
+      return;
+    }
+
+    if (!purchaseForm.purchase_date) {
+      toast.error("Purchase date required");
+      return;
+    }
+
     setIsSavingPurchase(true);
 
     try {
@@ -414,6 +442,11 @@ export function FinancePage() {
   }
 
   async function handleGenerateReport() {
+    if (!reportMonth) {
+      toast.error("Report month required");
+      return;
+    }
+
     setIsGeneratingReport(true);
 
     try {
@@ -500,6 +533,7 @@ export function FinancePage() {
                 }))
               }
               className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none"
+              required
             />
             <input
               value={purchaseForm.vendor_name}
@@ -596,6 +630,7 @@ export function FinancePage() {
                             })
                           }
                           className="h-9 w-40 rounded-lg border border-slate-200 px-2 text-sm"
+                          required
                         />
                         {item.is_edited ? (
                           <span className="ml-2 text-xs font-bold text-amber-600">
@@ -606,6 +641,7 @@ export function FinancePage() {
                       <td className="px-3 py-2">
                         <input
                           type="number"
+                          min="1"
                           value={item.qty}
                           onChange={(event) =>
                             updatePurchaseItem(index, {
@@ -613,6 +649,7 @@ export function FinancePage() {
                             })
                           }
                           className="h-9 w-20 rounded-lg border border-slate-200 px-2 text-sm"
+                          required
                         />
                       </td>
                       <td className="px-3 py-2">
@@ -629,6 +666,7 @@ export function FinancePage() {
                       <td className="px-3 py-2">
                         <input
                           type="number"
+                          min="1"
                           value={item.unit_price}
                           onChange={(event) =>
                             updatePurchaseItem(index, {
@@ -636,6 +674,7 @@ export function FinancePage() {
                             })
                           }
                           className="h-9 w-28 rounded-lg border border-slate-200 px-2 text-sm"
+                          required
                         />
                       </td>
                       <td className="px-3 py-2 text-sm font-semibold">
@@ -650,6 +689,7 @@ export function FinancePage() {
                             })
                           }
                           className="h-9 w-40 rounded-lg border border-slate-200 px-2 text-sm"
+                          required
                         />
                       </td>
                     </tr>
@@ -691,6 +731,7 @@ export function FinancePage() {
               value={reportMonth}
               onChange={(event) => setReportMonth(event.target.value)}
               className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none"
+              required
             />
             <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
               <input
@@ -733,6 +774,16 @@ export function FinancePage() {
               <p className="text-xs font-semibold text-slate-500">
                 Sheets: {Object.keys(report.sheets ?? {}).join(", ") || "-"}
               </p>
+              {report.google.spreadsheet_url ? (
+                <a
+                  href={report.google.spreadsheet_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex text-xs font-bold text-teal-700 underline-offset-4 hover:underline"
+                >
+                  Open Google Sheet
+                </a>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -1122,6 +1173,7 @@ export function FinancePage() {
                     }))
                   }
                   className="h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none"
+                  required
                 >
                   <option value="INCOME">Income</option>
                   <option value="EXPENSE">Expense</option>
@@ -1140,7 +1192,7 @@ export function FinancePage() {
                 />
                 <input
                   type="number"
-                  min="0"
+                  min="1"
                   value={form.amount}
                   onChange={(event) =>
                     setForm((current) => ({

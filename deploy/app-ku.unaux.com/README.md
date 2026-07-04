@@ -1,4 +1,4 @@
-# Deploy app-ku.unaux.com
+# Deploy dodolanku.netlify.app
 
 Folder `upload-public_html` berisi file static frontend yang bisa di-upload ke File Manager hosting.
 
@@ -28,7 +28,7 @@ sw.js
 Buka ini dulu untuk memastikan hosting membaca folder yang benar:
 
 ```txt
-http://app-ku.unaux.com/deploy-check.txt
+https://dodolanku.netlify.app/deploy-check.txt
 ```
 
 Kalau `deploy-check.txt` belum kebuka, masalahnya ada di root folder upload,
@@ -83,7 +83,7 @@ Environment variable yang wajib diisi di API host:
 
 ```txt
 NODE_ENV=production
-CLIENT_ORIGIN=https://app-ku.unaux.com,http://app-ku.unaux.com
+CLIENT_ORIGIN=https://dodolanku.netlify.app
 SUPABASE_URL=https://PROJECT.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=...
 JWT_ACCESS_SECRET=...

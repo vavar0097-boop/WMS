@@ -127,6 +127,7 @@ export type MonthlyReport = {
     synced: boolean;
     reason?: string;
     spreadsheet_id?: string;
+    spreadsheet_url?: string;
     sheet_count?: number;
   };
   sheets?: Record<string, Array<Array<string | number>>>;

@@ -11,7 +11,7 @@ const startLocalWeb = process.env.WMS_START_LOCAL_WEB === "true";
 const appUrl =
   startLocalWeb
     ? process.env.WMS_LOCAL_APP_URL || "http://127.0.0.1:5173"
-    : process.env.WMS_APP_URL || "https://app-ku.unaux.com";
+    : process.env.WMS_APP_URL || "https://dodolanku.netlify.app";
 const recordRun = process.env.WMS_RECORD === "true";
 
 export default defineConfig({

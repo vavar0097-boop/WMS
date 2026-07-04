@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const cashierShiftOptions =
+  ["Pagi", "Siang"] as const;
+
 export const openCashierSessionSchema =
   z.object({
     location_id:
@@ -8,9 +11,9 @@ export const openCashierSessionSchema =
       ),
 
     shift_name:
-      z.string()
-        .min(1, "Shift name is required")
-        .max(50, "Shift name is too long"),
+      z.enum(cashierShiftOptions, {
+        message: "Shift must be Pagi or Siang",
+      }),
 
     opening_cash:
       z.coerce
