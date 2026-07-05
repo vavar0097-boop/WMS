@@ -125,6 +125,18 @@ export class ItemRepository {
 
         description:
           payload.dto.description ?? null,
+
+        min_stock:
+          payload.dto.min_stock ?? 0,
+
+        reorder_qty:
+          payload.dto.reorder_qty ?? 0,
+
+        default_vendor_name:
+          payload.dto.default_vendor_name ?? null,
+
+        default_vendor_id:
+          payload.dto.default_vendor_id ?? null,
       })
       .select()
       .single();

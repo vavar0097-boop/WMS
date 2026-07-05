@@ -17,6 +17,7 @@ import {
   ItemRow,
   Pagination,
   UnitRow,
+  VendorRow,
   masterDataPageService,
 } from "../services/master-data-page.service";
 
@@ -40,6 +41,10 @@ type ItemFormState = {
   base_unit_id: string;
   barcode: string;
   description: string;
+  min_stock: number;
+  reorder_qty: number;
+  default_vendor_name: string;
+  default_vendor_id: string;
   is_active: boolean;
 };
 
@@ -49,6 +54,10 @@ const emptyForm: ItemFormState = {
   base_unit_id: "",
   barcode: "",
   description: "",
+  min_stock: 0,
+  reorder_qty: 0,
+  default_vendor_name: "",
+  default_vendor_id: "",
   is_active: true,
 };
 
@@ -63,6 +72,10 @@ function toPayload(form: ItemFormState): ItemPayload {
     ...(form.description.trim()
       ? { description: form.description.trim() }
       : {}),
+    min_stock: Number(form.min_stock) || 0,
+    reorder_qty: Number(form.reorder_qty) || 0,
+    default_vendor_name: form.default_vendor_name.trim() || null,
+    default_vendor_id: form.default_vendor_id || null,
     is_active: form.is_active,
   };
 }
@@ -70,6 +83,7 @@ function toPayload(form: ItemFormState): ItemPayload {
 export function ItemsPage() {
   const [items, setItems] = useState<ItemRow[]>([]);
   const [units, setUnits] = useState<UnitRow[]>([]);
+  const [vendors, setVendors] = useState<VendorRow[]>([]);
   const [pagination, setPagination] =
     useState(initialPagination);
   const [search, setSearch] = useState("");
@@ -89,11 +103,17 @@ export function ItemsPage() {
   );
 
   async function loadUnits() {
-    const rows = await masterDataPageService.getUnits({
-      limit: 100,
-    });
+    const [rows, vendorRows] = await Promise.all([
+      masterDataPageService.getUnits({
+        limit: 100,
+      }),
+      masterDataPageService.getVendors({
+        limit: 200,
+      }),
+    ]);
 
     setUnits(rows);
+    setVendors(vendorRows.filter((vendor) => vendor.is_active ?? true));
 
     if (!form.base_unit_id && rows[0]?.id) {
       setForm((current) => ({
@@ -171,6 +191,10 @@ export function ItemsPage() {
         "",
       barcode: item.barcode || "",
       description: item.description || "",
+      min_stock: Number(item.min_stock) || 0,
+      reorder_qty: Number(item.reorder_qty) || 0,
+      default_vendor_name: item.default_vendor_name || "",
+      default_vendor_id: item.default_vendor_id || "",
       is_active: item.is_active ?? true,
     });
     setModalOpen(true);
@@ -308,6 +332,9 @@ export function ItemsPage() {
                   Unit
                 </th>
                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Reorder
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Status
                 </th>
                 <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -319,7 +346,7 @@ export function ItemsPage() {
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-5 py-10 text-center text-sm text-slate-500"
                   >
                     Loading items...
@@ -328,7 +355,7 @@ export function ItemsPage() {
               ) : items.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-5 py-10 text-center text-sm text-slate-500"
                   >
                     No items found.
@@ -359,6 +386,10 @@ export function ItemsPage() {
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-600">
                         {unit?.code || item.units?.code || "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-600">
+                        Min {Number(item.min_stock) || 0} / PO{" "}
+                        {Number(item.reorder_qty) || 0}
                       </td>
                       <td className="whitespace-nowrap px-5 py-4">
                         <StatusPill active={item.is_active} />
@@ -498,6 +529,71 @@ export function ItemsPage() {
                     }
                     className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
                   />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Minimum Stock
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    value={form.min_stock}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        min_stock: Number(event.target.value),
+                      }))
+                    }
+                    className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Reorder Qty
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    value={form.reorder_qty}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        reorder_qty: Number(event.target.value),
+                      }))
+                    }
+                    className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Default Vendor
+                  </span>
+                  <select
+                    value={form.default_vendor_id}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        default_vendor_id: event.target.value,
+                        default_vendor_name:
+                          vendors.find(
+                            (vendor) => vendor.id === event.target.value,
+                          )?.vendor_name || current.default_vendor_name,
+                      }))
+                    }
+                    className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                  >
+                    <option value="">No default vendor</option>
+                    {vendors.map((vendor) => (
+                      <option key={vendor.id} value={vendor.id}>
+                        {vendor.vendor_code || "VND"} - {vendor.vendor_name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
                 <label className="flex items-end gap-3 rounded-xl border border-slate-200 px-3 py-2">

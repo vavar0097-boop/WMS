@@ -50,6 +50,14 @@ export function canAccessPathForRole(
     return hasPermission(role, PERMISSIONS.STOCK_READ);
   }
 
+  if (path.startsWith("/dashboard/purchase-orders")) {
+    return hasPermission(role, PERMISSIONS.PURCHASE_ORDERS_READ);
+  }
+
+  if (path.startsWith("/dashboard/vendors")) {
+    return hasPermission(role, PERMISSIONS.VENDORS_READ);
+  }
+
   if (path.startsWith("/dashboard/finance")) {
     return hasPermission(role, PERMISSIONS.FINANCE_READ);
   }

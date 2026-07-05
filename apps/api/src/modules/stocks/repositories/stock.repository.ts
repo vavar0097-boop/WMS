@@ -153,7 +153,8 @@ export class StockRepository {
         | "TRANSFER"
         | "ADJUSTMENT"
         | "MANUAL"
-        | "SALE";
+        | "SALE"
+        | "PURCHASE_RECEIVE";
 
       reference_id: string | null;
 

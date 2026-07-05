@@ -35,6 +35,14 @@ export interface Item {
 
   description: string | null;
 
+  min_stock: number;
+
+  reorder_qty: number;
+
+  default_vendor_name: string | null;
+
+  default_vendor_id: string | null;
+
   is_active: boolean;
 
   is_deleted: boolean;

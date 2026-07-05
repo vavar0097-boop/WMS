@@ -28,6 +28,25 @@ export const createItemSchema = z.object({
     .trim()
     .max(1000)
     .optional(),
+
+  min_stock: z.coerce
+    .number()
+    .min(0, "Minimum stock cannot be negative")
+    .optional(),
+
+  reorder_qty: z.coerce
+    .number()
+    .min(0, "Reorder quantity cannot be negative")
+    .optional(),
+
+  default_vendor_name: z
+    .string()
+    .trim()
+    .max(150)
+    .optional()
+    .nullable(),
+
+  default_vendor_id: z.uuid().optional().nullable(),
 });
 
 export const updateItemSchema = z.object({
@@ -53,6 +72,19 @@ export const updateItemSchema = z.object({
     .trim()
     .max(1000)
     .optional(),
+
+  min_stock: z.coerce.number().min(0).optional(),
+
+  reorder_qty: z.coerce.number().min(0).optional(),
+
+  default_vendor_name: z
+    .string()
+    .trim()
+    .max(150)
+    .optional()
+    .nullable(),
+
+  default_vendor_id: z.uuid().optional().nullable(),
 
   is_active: z.boolean().optional(),
 });

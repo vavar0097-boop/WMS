@@ -22,6 +22,10 @@ export type ItemRow = {
   base_unit_id?: string | null;
   barcode?: string | null;
   description?: string | null;
+  min_stock?: number | string | null;
+  reorder_qty?: number | string | null;
+  default_vendor_name?: string | null;
+  default_vendor_id?: string | null;
   is_active?: boolean | null;
   units?: {
     code?: string | null;
@@ -43,6 +47,34 @@ export type ItemPayload = {
   base_unit_id: string;
   barcode?: string;
   description?: string;
+  min_stock?: number;
+  reorder_qty?: number;
+  default_vendor_name?: string | null;
+  default_vendor_id?: string | null;
+  is_active?: boolean;
+};
+
+export type VendorRow = {
+  id: string;
+  vendor_code?: string | null;
+  vendor_name: string;
+  contact_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  is_active?: boolean | null;
+  created_at?: string | null;
+};
+
+export type VendorPayload = {
+  vendor_code?: string;
+  vendor_name: string;
+  contact_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
   is_active?: boolean;
 };
 
@@ -221,6 +253,41 @@ export const masterDataPageService = {
 
   async createWarehouse(payload: WarehousePayload) {
     const response = await apiClient.post("/warehouses", payload);
+
+    return response.data;
+  },
+
+  async getVendors(params?: {
+    search?: string;
+    limit?: number;
+  }) {
+    const response = await apiClient.get("/vendors", {
+      params: {
+        limit: params?.limit ?? 200,
+        ...(params?.search ? { search: params.search } : {}),
+      },
+    });
+
+    return normalizeArray<VendorRow>(response.data);
+  },
+
+  async createVendor(payload: VendorPayload) {
+    const response = await apiClient.post("/vendors", payload);
+
+    return response.data;
+  },
+
+  async updateVendor(
+    id: string,
+    payload: Partial<VendorPayload>,
+  ) {
+    const response = await apiClient.put(`/vendors/${id}`, payload);
+
+    return response.data;
+  },
+
+  async deleteVendor(id: string) {
+    const response = await apiClient.delete(`/vendors/${id}`);
 
     return response.data;
   },

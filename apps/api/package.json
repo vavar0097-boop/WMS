@@ -1,6 +1,6 @@
 {
   "name": "api",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "",
   "main": "index.js",
   "directories": {
@@ -15,7 +15,10 @@
     "db:status": "tsx scripts/db.ts status",
     "db:baseline": "tsx scripts/db.ts baseline",
     "db:migrate": "tsx scripts/db.ts migrate",
-    "db:apply": "tsx scripts/db.ts apply"
+    "db:apply": "tsx scripts/db.ts apply",
+    "db:prod:status": "WMS_DB_TARGET=production tsx scripts/db.ts status",
+    "db:prod:migrate": "WMS_DB_TARGET=production tsx scripts/db.ts migrate",
+    "db:prod:apply": "WMS_DB_TARGET=production tsx scripts/db.ts apply"
   },
   "keywords": [],
   "author": "",

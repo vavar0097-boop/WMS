@@ -7,4 +7,8 @@ export interface CreateItemDto {
   base_unit_id: string;
   barcode?: string;
   description?: string;
+  min_stock?: number;
+  reorder_qty?: number;
+  default_vendor_name?: string | null;
+  default_vendor_id?: string | null;
 }

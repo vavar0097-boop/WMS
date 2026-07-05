@@ -13,6 +13,9 @@ dotenv.config({
 dotenv.config({
   path: path.join(repoRoot, "apps/api/.env"),
 });
+dotenv.config({
+  path: path.join(repoRoot, "apps/api/.env.production.local"),
+});
 
 type Migration = {
   name: string;
@@ -20,15 +23,11 @@ type Migration = {
 };
 
 function getDatabaseUrl() {
+  const target = (process.env.WMS_DB_TARGET || "local").toLowerCase();
   const configuredUrl =
     process.env.DATABASE_URL ||
     process.env.SUPABASE_DB_URL ||
     process.env.POSTGRES_URL;
-
-  if (configuredUrl) {
-    return configuredUrl;
-  }
-
   const password =
     process.env.SUPABASE_DB_PASSWORD ||
     process.env.POSTGRES_PASSWORD;
@@ -36,6 +35,43 @@ function getDatabaseUrl() {
     repoRoot,
     "supabase/.temp/pooler-url"
   );
+
+  if (
+    ["prod", "production", "supabase"].includes(target) &&
+    password &&
+    fs.existsSync(linkedPoolerUrlPath)
+  ) {
+    const poolerUrl = fs
+      .readFileSync(linkedPoolerUrlPath, "utf8")
+      .trim();
+    const url = new URL(poolerUrl);
+
+    url.password = password;
+
+    return url.toString();
+  }
+
+  if (["prod", "production", "supabase"].includes(target)) {
+    if (configuredUrl) {
+      const host = new URL(configuredUrl).hostname;
+
+      if (!["localhost", "127.0.0.1"].includes(host)) {
+        return configuredUrl;
+      }
+    }
+
+    throw new Error(
+      [
+        "Missing production database binding.",
+        "Create apps/api/.env.production.local with SUPABASE_DB_PASSWORD.",
+        "The repo is linked to Supabase and will combine that password with supabase/.temp/pooler-url.",
+      ].join("\n")
+    );
+  }
+
+  if (configuredUrl) {
+    return configuredUrl;
+  }
 
   if (password && fs.existsSync(linkedPoolerUrlPath)) {
     const poolerUrl = fs

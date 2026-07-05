@@ -50,6 +50,13 @@ const StockPage = lazy(() =>
     default: module.StockPage,
   }))
 );
+const PurchaseOrdersPage = lazy(() =>
+  import("@/features/purchase-orders/pages/PurchaseOrdersPage").then(
+    (module) => ({
+      default: module.PurchaseOrdersPage,
+    }),
+  )
+);
 const FinancePage = lazy(() =>
   import("@/features/finance/pages/FinancePage").then((module) => ({
     default: module.FinancePage,
@@ -63,6 +70,11 @@ const ItemsPage = lazy(() =>
 const WarehousesPage = lazy(() =>
   import("@/features/master-data/pages/WarehousesPage").then((module) => ({
     default: module.WarehousesPage,
+  }))
+);
+const VendorsPage = lazy(() =>
+  import("@/features/master-data/pages/VendorsPage").then((module) => ({
+    default: module.VendorsPage,
   }))
 );
 const LocationsPage = lazy(() =>
@@ -232,6 +244,16 @@ export function App() {
               }
             />
             <Route
+              path="purchase-orders"
+              element={
+                <PermissionRoute
+                  permission={PERMISSIONS.PURCHASE_ORDERS_READ}
+                >
+                  <PurchaseOrdersPage />
+                </PermissionRoute>
+              }
+            />
+            <Route
               path="finance"
               element={
                 <PermissionRoute
@@ -258,6 +280,16 @@ export function App() {
                   permission={PERMISSIONS.WAREHOUSES_READ}
                 >
                   <WarehousesPage />
+                </PermissionRoute>
+              }
+            />
+            <Route
+              path="vendors"
+              element={
+                <PermissionRoute
+                  permission={PERMISSIONS.VENDORS_READ}
+                >
+                  <VendorsPage />
                 </PermissionRoute>
               }
             />
