@@ -85,6 +85,7 @@ export class LocationRepository {
         is_active,
         created_at
       `)
+      .eq("is_active", true)
       .order("code", {
         ascending: true,
       })

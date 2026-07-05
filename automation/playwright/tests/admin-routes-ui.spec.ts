@@ -9,6 +9,8 @@ import {
 const adminRoutes = [
   ["/dashboard", /Dashboard/],
   ["/dashboard/finance", /Finance/],
+  ["/dashboard/vendors", /Vendors/],
+  ["/dashboard/purchase-orders", /Purchase Orders/],
   ["/dashboard/items", /Items/],
   ["/dashboard/warehouses", /Warehouses/],
   ["/dashboard/locations", /Locations/],
