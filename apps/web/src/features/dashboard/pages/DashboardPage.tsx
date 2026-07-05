@@ -1,6 +1,8 @@
 import {
   ArrowLeftRight,
   Boxes,
+  ExternalLink,
+  FileSpreadsheet,
   Package,
   RefreshCw,
   ShoppingCart,
@@ -17,6 +19,7 @@ import {
   financeService,
   PosSaleFinanceRow,
 } from "@/features/finance/services/finance.service";
+import { globalReportService } from "@/features/global-report/services/global-report.service";
 import { stockService } from "@/features/stocks/services/stock.service";
 import { transferService } from "@/features/transfers/services/transfer.service";
 import { getApiErrorMessage } from "@/shared/lib/api/error";
@@ -146,6 +149,10 @@ function summarizeOutletSales(
   );
 }
 
+const defaultReportFrom = new Date(Date.now() - 29 * 86400000)
+  .toISOString()
+  .slice(0, 10);
+
 export function DashboardPage() {
   const [stats, setStats] = useState<Stat[]>([]);
   const [movementSummary, setMovementSummary] =
@@ -158,6 +165,8 @@ export function DashboardPage() {
   );
   const [recentSales, setRecentSales] = useState<PosSaleFinanceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportUrl, setReportUrl] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -278,6 +287,33 @@ export function DashboardPage() {
     1,
   );
 
+  async function handleGenerateGlobalReport() {
+    setIsGeneratingReport(true);
+
+    try {
+      const report = await globalReportService.generate({
+        date_from: defaultReportFrom,
+        date_to: new Date().toISOString().slice(0, 10),
+        sync_google: true,
+      });
+
+      setReportUrl(report.google.spreadsheet_url ?? null);
+      toast.success(
+        "Global report synced",
+        report.google.synced
+          ? `${report.summary.report_sheet_name || "New report sheet"} created.`
+          : report.google.reason || "Report generated without sync.",
+      );
+    } catch (error) {
+      toast.error(
+        "Global report failed",
+        getApiErrorMessage(error),
+      );
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -296,6 +332,26 @@ export function DashboardPage() {
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm">
             Updated {lastUpdatedAt ? formatDateTime(lastUpdatedAt.toISOString()) : "-"}
           </div>
+          {reportUrl ? (
+            <a
+              href={reportUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 text-sm font-semibold text-teal-800 shadow-sm transition hover:bg-teal-100"
+            >
+              <ExternalLink size={16} />
+              Open Sheet
+            </a>
+          ) : null}
+          <button
+            type="button"
+            onClick={handleGenerateGlobalReport}
+            disabled={isGeneratingReport}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100 disabled:opacity-60"
+          >
+            <FileSpreadsheet size={16} />
+            {isGeneratingReport ? "Generating..." : "Generate Global Report"}
+          </button>
           <button
             type="button"
             onClick={() => setReloadKey((value) => value + 1)}

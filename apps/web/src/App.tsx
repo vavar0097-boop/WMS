@@ -62,13 +62,6 @@ const FinancePage = lazy(() =>
     default: module.FinancePage,
   }))
 );
-const GlobalReportPage = lazy(() =>
-  import("@/features/global-report/pages/GlobalReportPage").then(
-    (module) => ({
-      default: module.GlobalReportPage,
-    }),
-  )
-);
 const ItemsPage = lazy(() =>
   import("@/features/master-data/pages/ItemsPage").then((module) => ({
     default: module.ItemsPage,
@@ -267,16 +260,6 @@ export function App() {
                   permission={PERMISSIONS.FINANCE_READ}
                 >
                   <FinancePage />
-                </PermissionRoute>
-              }
-            />
-            <Route
-              path="global-report"
-              element={
-                <PermissionRoute
-                  permission={PERMISSIONS.FINANCE_READ}
-                >
-                  <GlobalReportPage />
                 </PermissionRoute>
               }
             />

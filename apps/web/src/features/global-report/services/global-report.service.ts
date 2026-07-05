@@ -8,6 +8,8 @@ export type GlobalReport = {
   generated_at: string;
   summary: {
     sheet_count: number;
+    source_sheet_count?: number;
+    report_sheet_name?: string;
     sales_count: number;
     purchase_order_count: number;
     stock_rows: number;

@@ -139,6 +139,189 @@ function buildSheets(params: {
       item,
     })),
   );
+  const dailyPivot = new Map<
+    string,
+    {
+      salesCount: number;
+      salesTotal: number;
+      cashTotal: number;
+      noncashTotal: number;
+      expenseTotal: number;
+      poTotal: number;
+    }
+  >();
+  const outletPivot = new Map<
+    string,
+    {
+      outletCode: string;
+      outletName: string;
+      salesCount: number;
+      salesTotal: number;
+      cashTotal: number;
+      noncashTotal: number;
+    }
+  >();
+  const itemPivot = new Map<
+    string,
+    {
+      itemCode: string;
+      itemName: string;
+      qty: number;
+      salesTotal: number;
+    }
+  >();
+  const poStatusPivot = new Map<
+    string,
+    {
+      status: string;
+      count: number;
+      amount: number;
+      openQty: number;
+    }
+  >();
+  const stockRiskPivot = new Map<
+    string,
+    {
+      warehouseCode: string;
+      warehouseName: string;
+      locationCode: string;
+      locationName: string;
+      totalRows: number;
+      lowStockRows: number;
+      totalQty: number;
+    }
+  >();
+
+  function dailyRow(date: string) {
+    const existing =
+      dailyPivot.get(date) ??
+      {
+        salesCount: 0,
+        salesTotal: 0,
+        cashTotal: 0,
+        noncashTotal: 0,
+        expenseTotal: 0,
+        poTotal: 0,
+      };
+
+    dailyPivot.set(date, existing);
+
+    return existing;
+  }
+
+  for (const sale of params.sales) {
+    if (sale.status === "VOIDED") continue;
+
+    const date = dateOnly(sale.created_at);
+    const row = dailyRow(date);
+    const saleTotal = numberValue(sale.grand_total);
+    const cashTotal = paymentTotal(sale, "CASH");
+    const noncashTotal = paymentTotal(sale, "NONCASH");
+    row.salesCount += 1;
+    row.salesTotal += saleTotal;
+    row.cashTotal += cashTotal;
+    row.noncashTotal += noncashTotal;
+
+    const outletCode = sale.location?.code ?? "";
+    const outletName = sale.location?.name ?? "";
+    const outletKey = outletCode || outletName || "UNKNOWN";
+    const outlet =
+      outletPivot.get(outletKey) ??
+      {
+        outletCode,
+        outletName,
+        salesCount: 0,
+        salesTotal: 0,
+        cashTotal: 0,
+        noncashTotal: 0,
+      };
+    outlet.salesCount += 1;
+    outlet.salesTotal += saleTotal;
+    outlet.cashTotal += cashTotal;
+    outlet.noncashTotal += noncashTotal;
+    outletPivot.set(outletKey, outlet);
+  }
+
+  for (const { item } of saleItems) {
+    const itemCode = item.item_code_snapshot ?? "";
+    const itemName = item.item_name_snapshot ?? "";
+    const key = itemCode || itemName || "UNKNOWN";
+    const row =
+      itemPivot.get(key) ??
+      {
+        itemCode,
+        itemName,
+        qty: 0,
+        salesTotal: 0,
+      };
+    row.qty += numberValue(item.quantity);
+    row.salesTotal += numberValue(item.subtotal);
+    itemPivot.set(key, row);
+  }
+
+  for (const row of params.transactions) {
+    if (row.type === "EXPENSE") {
+      dailyRow(row.transaction_date ?? "").expenseTotal += numberValue(
+        row.amount,
+      );
+    }
+  }
+
+  for (const po of params.purchaseOrders) {
+    const total = poTotal(po);
+    dailyRow(po.order_date ?? "").poTotal += total;
+
+    const row =
+      poStatusPivot.get(po.status ?? "UNKNOWN") ??
+      {
+        status: po.status ?? "UNKNOWN",
+        count: 0,
+        amount: 0,
+        openQty: 0,
+      };
+    row.count += 1;
+    row.amount += total;
+    row.openQty += (Array.isArray(po.purchase_order_items)
+      ? po.purchase_order_items
+      : []
+    ).reduce(
+      (sum: number, item: Row) =>
+        sum +
+        Math.max(
+          numberValue(item.qty_ordered) - numberValue(item.qty_received),
+          0,
+        ),
+      0,
+    );
+    poStatusPivot.set(row.status, row);
+  }
+
+  for (const stock of params.stocks) {
+    const warehouseCode = stock.locations?.warehouses?.code ?? "";
+    const warehouseName = stock.locations?.warehouses?.name ?? "";
+    const locationCode = stock.locations?.code ?? "";
+    const locationName = stock.locations?.name ?? "";
+    const key = `${warehouseCode}|${locationCode}`;
+    const row =
+      stockRiskPivot.get(key) ??
+      {
+        warehouseCode,
+        warehouseName,
+        locationCode,
+        locationName,
+        totalRows: 0,
+        lowStockRows: 0,
+        totalQty: 0,
+      };
+    const quantity = numberValue(stock.quantity);
+    const minStock = numberValue(stock.items?.min_stock);
+    row.totalRows += 1;
+    row.totalQty += quantity;
+    if (minStock > 0 && quantity < minStock) {
+      row.lowStockRows += 1;
+    }
+    stockRiskPivot.set(key, row);
+  }
 
   const sheets: Record<string, GoogleSheetValues> = {
     GR_Summary: [
@@ -171,6 +354,91 @@ function buildSheets(params: {
       ["Expense Ratio", salesTotal ? expense / salesTotal : 0, "ratio"],
       ["Open PO Amount", poOpenAmount, "IDR"],
       ["Low Stock Rate", params.stocks.length ? stockRiskRows.length / params.stocks.length : 0, "ratio"],
+    ],
+    GR_Pivot_Daily: [
+      [
+        "date",
+        "sales_count",
+        "sales_total",
+        "cash_total",
+        "noncash_total",
+        "expense_total",
+        "gross_profit_proxy",
+        "po_total",
+      ],
+      ...[...dailyPivot.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, row]) => [
+          date,
+          row.salesCount,
+          row.salesTotal,
+          row.cashTotal,
+          row.noncashTotal,
+          row.expenseTotal,
+          row.salesTotal - row.expenseTotal,
+          row.poTotal,
+        ]),
+    ],
+    GR_Pivot_Outlet: [
+      [
+        "outlet_code",
+        "outlet_name",
+        "sales_count",
+        "sales_total",
+        "cash_total",
+        "noncash_total",
+      ],
+      ...[...outletPivot.values()]
+        .sort((a, b) => b.salesTotal - a.salesTotal)
+        .map((row) => [
+          row.outletCode,
+          row.outletName,
+          row.salesCount,
+          row.salesTotal,
+          row.cashTotal,
+          row.noncashTotal,
+        ]),
+    ],
+    GR_Pivot_Items: [
+      ["item_code", "item_name", "qty_sold", "sales_total"],
+      ...[...itemPivot.values()]
+        .sort((a, b) => b.salesTotal - a.salesTotal)
+        .map((row) => [
+          row.itemCode,
+          row.itemName,
+          row.qty,
+          row.salesTotal,
+        ]),
+    ],
+    GR_Pivot_PO_Status: [
+      ["status", "po_count", "po_amount", "open_qty"],
+      ...[...poStatusPivot.values()]
+        .sort((a, b) => b.amount - a.amount)
+        .map((row) => [row.status, row.count, row.amount, row.openQty]),
+    ],
+    GR_Pivot_Stock_Risk: [
+      [
+        "warehouse_code",
+        "warehouse_name",
+        "location_code",
+        "location_name",
+        "stock_rows",
+        "low_stock_rows",
+        "low_stock_rate",
+        "total_qty",
+      ],
+      ...[...stockRiskPivot.values()]
+        .sort((a, b) => b.lowStockRows - a.lowStockRows)
+        .map((row) => [
+          row.warehouseCode,
+          row.warehouseName,
+          row.locationCode,
+          row.locationName,
+          row.totalRows,
+          row.lowStockRows,
+          row.totalRows ? row.lowStockRows / row.totalRows : 0,
+          row.totalQty,
+        ]),
     ],
     GR_Sales: [
       [
@@ -435,6 +703,75 @@ function buildSheets(params: {
   return sheets;
 }
 
+function titleFromGeneratedAt(value: string) {
+  const compact = value
+    .replace(/\D/g, "")
+    .slice(0, 12);
+
+  return compact || String(Date.now());
+}
+
+function buildReportSheetName(params: {
+  dateFrom: string;
+  dateTo: string;
+  generatedAt: string;
+}) {
+  return `Global Report ${params.dateFrom} ${params.dateTo} ${titleFromGeneratedAt(params.generatedAt)}`.slice(
+    0,
+    95,
+  );
+}
+
+function sectionRows(
+  title: string,
+  rows?: GoogleSheetValues,
+  limit = 250,
+): GoogleSheetValues {
+  const values = rows ?? [];
+  const header = values[0] ?? [];
+  const body = values.slice(1, limit + 1);
+
+  return [
+    [],
+    [title],
+    header,
+    ...body,
+  ];
+}
+
+function buildSingleWorkbookReport(params: {
+  dateFrom: string;
+  dateTo: string;
+  generatedAt: string;
+  sheets: Record<string, GoogleSheetValues>;
+}) {
+  const sheets = params.sheets;
+
+  return [
+    ["Global Report"],
+    ["Period", `${params.dateFrom} to ${params.dateTo}`],
+    ["Generated At", params.generatedAt],
+    ["Source", "Enterprise WMS"],
+    [],
+    ...sectionRows("KPI", sheets.GR_KPI),
+    ...sectionRows("Executive Summary", sheets.GR_Summary),
+    ...sectionRows("Daily Sales / Expense / PO Pivot", sheets.GR_Pivot_Daily),
+    ...sectionRows("Sales by Outlet Pivot", sheets.GR_Pivot_Outlet),
+    ...sectionRows("Top Menu / Item Sales Pivot", sheets.GR_Pivot_Items),
+    ...sectionRows("Purchase Order Status Pivot", sheets.GR_Pivot_PO_Status),
+    ...sectionRows("Stock Risk Pivot", sheets.GR_Pivot_Stock_Risk),
+    ...sectionRows("Sales Detail", sheets.GR_Sales, 500),
+    ...sectionRows("Sales Item Detail", sheets.GR_Sales_Items, 500),
+    ...sectionRows("Purchase Order Detail", sheets.GR_PO, 500),
+    ...sectionRows("Purchase Order Item Detail", sheets.GR_PO_Items, 500),
+    ...sectionRows("Stock Snapshot", sheets.GR_Stock, 500),
+    ...sectionRows("Stock Ledger", sheets.GR_Stock_Ledger, 500),
+    ...sectionRows("Finance Transactions", sheets.GR_Finance, 500),
+    ...sectionRows("Daily Purchases", sheets.GR_Daily_Purchases, 500),
+    ...sectionRows("Cashier Sessions", sheets.GR_Cashier, 500),
+  ];
+}
+
 export class GlobalReportService {
   async generate(params: {
     date_from?: string;
@@ -461,7 +798,7 @@ export class GlobalReportService {
       repository.getPurchaseOrders({ dateFrom, dateTo }),
     ]);
 
-    const sheets = buildSheets({
+    const sourceSheets = buildSheets({
       dateFrom,
       dateTo,
       generatedAt,
@@ -473,6 +810,19 @@ export class GlobalReportService {
       ledgers,
       purchaseOrders,
     });
+    const reportSheetName = buildReportSheetName({
+      dateFrom,
+      dateTo,
+      generatedAt,
+    });
+    const sheets = {
+      [reportSheetName]: buildSingleWorkbookReport({
+        dateFrom,
+        dateTo,
+        generatedAt,
+        sheets: sourceSheets,
+      }),
+    };
     const google = params.sync_google
       ? await syncGoogleSheet({ sheets })
       : {
@@ -486,6 +836,8 @@ export class GlobalReportService {
       generated_at: generatedAt,
       summary: {
         sheet_count: Object.keys(sheets).length,
+        source_sheet_count: Object.keys(sourceSheets).length,
+        report_sheet_name: reportSheetName,
         sales_count: sales.length,
         purchase_order_count: purchaseOrders.length,
         stock_rows: stocks.length,

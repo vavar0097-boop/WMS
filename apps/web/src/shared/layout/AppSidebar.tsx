@@ -1,6 +1,5 @@
 import {
   ArrowLeftRight,
-  BarChart3,
   Boxes,
   ClipboardList,
   DollarSign,
@@ -79,13 +78,6 @@ const sidebarItems: SidebarItem[] = [
     icon: DollarSign,
     permission: PERMISSIONS.FINANCE_READ,
     color: "bg-amber-50 text-amber-700",
-  },
-  {
-    label: "Global Report",
-    href: "/dashboard/global-report",
-    icon: BarChart3,
-    permission: PERMISSIONS.FINANCE_READ,
-    color: "bg-blue-50 text-blue-700",
   },
   {
     label: "Items",
