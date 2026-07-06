@@ -4,6 +4,26 @@ import { BadRequestError } from "../utils/errors";
 
 export type GoogleSheetValues = Array<Array<string | number>>;
 
+export type GoogleChartSpec = {
+  sheetName: string;
+  title: string;
+  type: "LINE" | "COLUMN" | "BAR";
+  anchorRowIndex: number;
+  anchorColumnIndex: number;
+  domain: {
+    startRowIndex: number;
+    endRowIndex: number;
+    startColumnIndex: number;
+    endColumnIndex: number;
+  };
+  series: Array<{
+    startRowIndex: number;
+    endRowIndex: number;
+    startColumnIndex: number;
+    endColumnIndex: number;
+  }>;
+};
+
 function toRows(values: GoogleSheetValues) {
   return values.map((row) => row.map((value) => String(value ?? "")));
 }
@@ -26,6 +46,7 @@ function normalizeGooglePrivateKey(value?: string) {
 
 export async function syncGoogleSheet(params: {
   sheets: Record<string, GoogleSheetValues>;
+  charts?: GoogleChartSpec[];
 }) {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = normalizeGooglePrivateKey(
@@ -111,26 +132,31 @@ export async function syncGoogleSheet(params: {
     throw new BadRequestError("Google authentication returned no token");
   }
 
-  const metadataResponse = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+  async function fetchMetadata() {
+    const response = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    },
-  );
+    );
 
-  if (!metadataResponse.ok) {
-    throw new BadRequestError("Google Sheets metadata failed");
+    if (!response.ok) {
+      throw new BadRequestError("Google Sheets metadata failed");
+    }
+
+    return (await response.json()) as {
+      sheets?: Array<{
+        properties?: {
+          sheetId?: number;
+          title?: string;
+        };
+      }>;
+    };
   }
 
-  const metadata = (await metadataResponse.json()) as {
-    sheets?: Array<{
-      properties?: {
-        title?: string;
-      };
-    }>;
-  };
+  let metadata = await fetchMetadata();
   const existingSheets = new Set(
     (metadata.sheets ?? [])
       .map((sheet) => sheet.properties?.title)
@@ -164,6 +190,8 @@ export async function syncGoogleSheet(params: {
     if (!addSheetResponse.ok) {
       throw new BadRequestError("Google Sheets tab creation failed");
     }
+
+    metadata = await fetchMetadata();
   }
 
   const ranges = Object.keys(params.sheets).map(
@@ -210,6 +238,149 @@ export async function syncGoogleSheet(params: {
 
   if (!response.ok) {
     throw new BadRequestError("Google Sheets sync failed");
+  }
+
+  const sheetIds = new Map(
+    (metadata.sheets ?? [])
+      .map((sheet) => [
+        sheet.properties?.title,
+        sheet.properties?.sheetId,
+      ])
+      .filter(
+        (entry): entry is [string, number] =>
+          Boolean(entry[0]) && typeof entry[1] === "number",
+      ),
+  );
+  const chartRequests = (params.charts ?? [])
+    .map((chart) => {
+      const sheetId = sheetIds.get(chart.sheetName);
+
+      if (sheetId === undefined) {
+        return null;
+      }
+
+      const source = (range: GoogleChartSpec["domain"]) => ({
+        sheetId,
+        startRowIndex: range.startRowIndex,
+        endRowIndex: range.endRowIndex,
+        startColumnIndex: range.startColumnIndex,
+        endColumnIndex: range.endColumnIndex,
+      });
+
+      return {
+        addChart: {
+          chart: {
+            spec: {
+              title: chart.title,
+              basicChart: {
+                chartType: chart.type,
+                legendPosition: "RIGHT_LEGEND",
+                axis: [
+                  {
+                    position: "BOTTOM_AXIS",
+                    title: "Category",
+                  },
+                  {
+                    position: "LEFT_AXIS",
+                    title: "Value",
+                  },
+                ],
+                domains: [
+                  {
+                    domain: {
+                      sourceRange: {
+                        sources: [source(chart.domain)],
+                      },
+                    },
+                  },
+                ],
+                series: chart.series.map((series) => ({
+                  series: {
+                    sourceRange: {
+                      sources: [source(series)],
+                    },
+                  },
+                  targetAxis: "LEFT_AXIS",
+                })),
+                headerCount: 0,
+              },
+            },
+            position: {
+              overlayPosition: {
+                anchorCell: {
+                  sheetId,
+                  rowIndex: chart.anchorRowIndex,
+                  columnIndex: chart.anchorColumnIndex,
+                },
+                offsetXPixels: 0,
+                offsetYPixels: 0,
+                widthPixels: 520,
+                heightPixels: 300,
+              },
+            },
+          },
+        },
+      };
+    })
+    .filter((request): request is NonNullable<typeof request> =>
+      Boolean(request),
+    );
+  const formatRequests = Object.keys(params.sheets)
+    .map((sheetName) => sheetIds.get(sheetName))
+    .filter((sheetId): sheetId is number => typeof sheetId === "number")
+    .flatMap((sheetId) => [
+      {
+        repeatCell: {
+          range: {
+            sheetId,
+            startRowIndex: 0,
+            endRowIndex: 1,
+          },
+          cell: {
+            userEnteredFormat: {
+              textFormat: {
+                bold: true,
+                fontSize: 16,
+              },
+            },
+          },
+          fields: "userEnteredFormat.textFormat",
+        },
+      },
+      {
+        autoResizeDimensions: {
+          dimensions: {
+            sheetId,
+            dimension: "COLUMNS",
+            startIndex: 0,
+            endIndex: 12,
+          },
+        },
+      },
+    ]);
+
+  if (chartRequests.length > 0 || formatRequests.length > 0) {
+    const formatResponse = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requests: [...formatRequests, ...chartRequests],
+        }),
+      },
+    );
+
+    if (!formatResponse.ok) {
+      const errorText = await formatResponse.text();
+
+      throw new BadRequestError(
+        `Google Sheets chart formatting failed: ${errorText.slice(0, 300)}`,
+      );
+    }
   }
 
   return {

@@ -1,5 +1,6 @@
 import { BadRequestError } from "../../utils/errors";
 import {
+  GoogleChartSpec,
   GoogleSheetValues,
   syncGoogleSheet,
 } from "../../services/google-sheets.service";
@@ -706,7 +707,7 @@ function buildSheets(params: {
 function titleFromGeneratedAt(value: string) {
   const compact = value
     .replace(/\D/g, "")
-    .slice(0, 12);
+    .slice(0, 14);
 
   return compact || String(Date.now());
 }
@@ -740,36 +741,143 @@ function sectionRows(
 }
 
 function buildSingleWorkbookReport(params: {
+  sheetName: string;
   dateFrom: string;
   dateTo: string;
   generatedAt: string;
   sheets: Record<string, GoogleSheetValues>;
 }) {
   const sheets = params.sheets;
-
-  return [
+  const values: GoogleSheetValues = [
     ["Global Report"],
     ["Period", `${params.dateFrom} to ${params.dateTo}`],
     ["Generated At", params.generatedAt],
     ["Source", "Enterprise WMS"],
-    [],
-    ...sectionRows("KPI", sheets.GR_KPI),
-    ...sectionRows("Executive Summary", sheets.GR_Summary),
-    ...sectionRows("Daily Sales / Expense / PO Pivot", sheets.GR_Pivot_Daily),
-    ...sectionRows("Sales by Outlet Pivot", sheets.GR_Pivot_Outlet),
-    ...sectionRows("Top Menu / Item Sales Pivot", sheets.GR_Pivot_Items),
-    ...sectionRows("Purchase Order Status Pivot", sheets.GR_Pivot_PO_Status),
-    ...sectionRows("Stock Risk Pivot", sheets.GR_Pivot_Stock_Risk),
-    ...sectionRows("Sales Detail", sheets.GR_Sales, 500),
-    ...sectionRows("Sales Item Detail", sheets.GR_Sales_Items, 500),
-    ...sectionRows("Purchase Order Detail", sheets.GR_PO, 500),
-    ...sectionRows("Purchase Order Item Detail", sheets.GR_PO_Items, 500),
-    ...sectionRows("Stock Snapshot", sheets.GR_Stock, 500),
-    ...sectionRows("Stock Ledger", sheets.GR_Stock_Ledger, 500),
-    ...sectionRows("Finance Transactions", sheets.GR_Finance, 500),
-    ...sectionRows("Daily Purchases", sheets.GR_Daily_Purchases, 500),
-    ...sectionRows("Cashier Sessions", sheets.GR_Cashier, 500),
   ];
+  const sections = new Map<
+    string,
+    {
+      headerRowIndex: number;
+      dataStartRowIndex: number;
+      dataEndRowIndex: number;
+    }
+  >();
+
+  function addSection(title: string, rows?: GoogleSheetValues, limit = 250) {
+    const startIndex = values.length;
+    values.push(...sectionRows(title, rows, limit));
+    const headerRowIndex = startIndex + 2;
+    const bodyLength = Math.max(
+      Math.min((rows?.length ?? 1) - 1, limit),
+      0,
+    );
+
+    sections.set(title, {
+      headerRowIndex,
+      dataStartRowIndex: headerRowIndex + 1,
+      dataEndRowIndex: headerRowIndex + 1 + bodyLength,
+    });
+  }
+
+  addSection("KPI", sheets.GR_KPI);
+  addSection("Executive Summary", sheets.GR_Summary);
+  addSection("Daily Sales / Expense / PO Pivot", sheets.GR_Pivot_Daily);
+  addSection("Sales by Outlet Pivot", sheets.GR_Pivot_Outlet);
+  addSection("Top Menu / Item Sales Pivot", sheets.GR_Pivot_Items);
+  addSection("Purchase Order Status Pivot", sheets.GR_Pivot_PO_Status);
+  addSection("Stock Risk Pivot", sheets.GR_Pivot_Stock_Risk);
+  addSection("Sales Detail", sheets.GR_Sales, 500);
+  addSection("Sales Item Detail", sheets.GR_Sales_Items, 500);
+  addSection("Purchase Order Detail", sheets.GR_PO, 500);
+  addSection("Purchase Order Item Detail", sheets.GR_PO_Items, 500);
+  addSection("Stock Snapshot", sheets.GR_Stock, 500);
+  addSection("Stock Ledger", sheets.GR_Stock_Ledger, 500);
+  addSection("Finance Transactions", sheets.GR_Finance, 500);
+  addSection("Daily Purchases", sheets.GR_Daily_Purchases, 500);
+  addSection("Cashier Sessions", sheets.GR_Cashier, 500);
+
+  function chart(
+    section: string,
+    title: string,
+    type: GoogleChartSpec["type"],
+    anchorRowIndex: number,
+    domainColumnIndex: number,
+    seriesColumnIndexes: number[],
+  ): GoogleChartSpec | null {
+    const range = sections.get(section);
+
+    if (!range || range.dataEndRowIndex <= range.dataStartRowIndex) {
+      return null;
+    }
+
+    return {
+      sheetName: params.sheetName,
+      title,
+      type,
+      anchorRowIndex,
+      anchorColumnIndex: 8,
+      domain: {
+        startRowIndex: range.dataStartRowIndex,
+        endRowIndex: range.dataEndRowIndex,
+        startColumnIndex: domainColumnIndex,
+        endColumnIndex: domainColumnIndex + 1,
+      },
+      series: seriesColumnIndexes.map((columnIndex) => ({
+        startRowIndex: range.dataStartRowIndex,
+        endRowIndex: range.dataEndRowIndex,
+        startColumnIndex: columnIndex,
+        endColumnIndex: columnIndex + 1,
+      })),
+    };
+  }
+
+  const charts = [
+    chart(
+      "Daily Sales / Expense / PO Pivot",
+      "Daily Sales, Expense, and PO",
+      "LINE",
+      1,
+      0,
+      [2, 5, 7],
+    ),
+    chart(
+      "Sales by Outlet Pivot",
+      "Sales by Outlet",
+      "COLUMN",
+      17,
+      1,
+      [3],
+    ),
+    chart(
+      "Top Menu / Item Sales Pivot",
+      "Top Menu / Item Sales",
+      "BAR",
+      33,
+      1,
+      [3],
+    ),
+    chart(
+      "Purchase Order Status Pivot",
+      "Purchase Order by Status",
+      "COLUMN",
+      49,
+      0,
+      [2],
+    ),
+    chart(
+      "Stock Risk Pivot",
+      "Low Stock Risk by Location",
+      "BAR",
+      65,
+      3,
+      [5],
+    ),
+  ].filter((item): item is GoogleChartSpec => Boolean(item));
+
+  return {
+    values,
+    charts,
+  };
 }
 
 export class GlobalReportService {
@@ -815,16 +923,21 @@ export class GlobalReportService {
       dateTo,
       generatedAt,
     });
+    const reportSheet = buildSingleWorkbookReport({
+      sheetName: reportSheetName,
+      dateFrom,
+      dateTo,
+      generatedAt,
+      sheets: sourceSheets,
+    });
     const sheets = {
-      [reportSheetName]: buildSingleWorkbookReport({
-        dateFrom,
-        dateTo,
-        generatedAt,
-        sheets: sourceSheets,
-      }),
+      [reportSheetName]: reportSheet.values,
     };
     const google = params.sync_google
-      ? await syncGoogleSheet({ sheets })
+      ? await syncGoogleSheet({
+          sheets,
+          charts: reportSheet.charts,
+        })
       : {
           synced: false,
           reason: "Sync not requested",
