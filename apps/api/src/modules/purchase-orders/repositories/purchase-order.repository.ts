@@ -5,6 +5,7 @@ import {
   ReceivePurchaseOrderDto,
 } from "../dto/purchase-order.dto";
 import { PurchaseOrderStatus } from "../types/purchase-order.type";
+import { BadRequestError } from "../../../utils/errors";
 
 export class PurchaseOrderRepository {
   async findLowStockCandidates(locationId: string) {
@@ -293,27 +294,26 @@ export class PurchaseOrderRepository {
     purchaseOrderItemId: string;
     qtyReceived: number;
   }) {
-    const { data: row, error: findError } = await db
-      .from("purchase_order_items")
-      .select("qty_received")
-      .eq("id", params.purchaseOrderItemId)
-      .single();
-
-    if (findError) {
-      throw findError;
-    }
-
-    const nextQty = Number(row.qty_received ?? 0) + params.qtyReceived;
-    const { error } = await db
-      .from("purchase_order_items")
-      .update({
-        qty_received: nextQty,
-      })
-      .eq("id", params.purchaseOrderItemId);
+    // Uses a DB-side atomic increment (row-locked SELECT ... FOR
+    // UPDATE + UPDATE inside a single function call) instead of a
+    // JS-side read-then-write, so concurrent receive requests for
+    // the same PO item can't lose an update or both slip past the
+    // "exceeds remaining quantity" check against the same stale value.
+    const { data, error } = await db.rpc(
+      "increment_po_item_received_qty",
+      {
+        p_purchase_order_item_id: params.purchaseOrderItemId,
+        p_qty_received: params.qtyReceived,
+      },
+    );
 
     if (error) {
-      throw error;
+      throw new BadRequestError(
+        error.message || "Failed to record received quantity",
+      );
     }
+
+    return data;
   }
 
   async createEvent(

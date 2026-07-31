@@ -1,6 +1,8 @@
 import {
   BadRequestError,
   NotFoundError,
+  isForeignKeyViolation,
+  toDeleteConflictError,
 } from "../../utils/errors";
 
 import {
@@ -83,6 +85,14 @@ export class VendorService {
       throw new NotFoundError("Vendor not found");
     }
 
-    await vendorRepository.delete(id);
+    try {
+      await vendorRepository.delete(id);
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        throw toDeleteConflictError(error, "vendor");
+      }
+
+      throw error;
+    }
   }
 }

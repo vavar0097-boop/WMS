@@ -168,7 +168,29 @@ export function PosPage() {
     !isPaying &&
     (paymentMethod === "NONCASH" || paid >= subtotal);
 
-  const categories = ["ALL", "Makanan", "Minuman", "Addon"];
+  // Category is a free-text field admins can set from
+  // Settings > POS Menu, so the tab list must be derived from
+  // whatever categories actually exist on the menu instead of a
+  // fixed list — otherwise any custom category becomes invisible
+  // outside of "ALL". "Snack" is kept as a legacy alias of
+  // "Makanan" for backward compatibility with older menu data.
+  function normalizeCategory(rawCategory: string | null | undefined) {
+    const trimmed = rawCategory?.trim();
+
+    if (!trimmed) return "Lainnya";
+    if (trimmed === "Snack") return "Makanan";
+
+    return trimmed;
+  }
+
+  const categories = useMemo(() => {
+    const unique = Array.from(
+      new Set(menu.map((item) => normalizeCategory(item.category))),
+    ).sort((a, b) => a.localeCompare(b));
+
+    return ["ALL", ...unique];
+  }, [menu]);
+
   const currentLocationName =
     locations.find(
       (location) =>
@@ -182,11 +204,9 @@ export function PosPage() {
   const filteredMenu = useMemo(
     () =>
       menu.filter((item) => {
-        const itemCategory = item.category?.trim();
+        const itemCategory = normalizeCategory(item.category);
         const categoryMatch =
-          category === "ALL" ||
-          itemCategory === category ||
-          (category === "Makanan" && itemCategory === "Snack");
+          category === "ALL" || itemCategory === category;
         const query = search.trim().toLowerCase();
 
         if (!query) return categoryMatch;
@@ -1137,9 +1157,7 @@ export function PosPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="inline-flex rounded-md bg-teal-50 px-2 py-1 text-[11px] font-bold uppercase text-teal-700">
-                          {item.category === "Snack"
-                            ? "Makanan"
-                            : item.category || "Menu"}
+                          {normalizeCategory(item.category)}
                         </p>
                         <h3 className="mt-2 line-clamp-2 text-base font-bold">
                           {item.menu_name}

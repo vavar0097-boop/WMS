@@ -86,6 +86,7 @@ export function ItemsPage() {
   const [vendors, setVendors] = useState<VendorRow[]>([]);
   const [pagination, setPagination] =
     useState(initialPagination);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -140,7 +141,7 @@ export function ItemsPage() {
 
       try {
         const result = await masterDataPageService.getItems({
-          page: 1,
+          page,
           limit: 20,
           ...(search.trim() ? { search: search.trim() } : {}),
         });
@@ -169,6 +170,13 @@ export function ItemsPage() {
       mounted = false;
       window.clearTimeout(timer);
     };
+  }, [search, page, reloadKey]);
+
+  // Reset back to page 1 whenever the search term or a manual
+  // reload changes the result set, otherwise the user can get
+  // stuck on an out-of-range page showing "No items found."
+  useEffect(() => {
+    setPage(1);
   }, [search, reloadKey]);
 
   function openCreateModal() {
@@ -421,6 +429,36 @@ export function ItemsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3">
+          <p className="text-sm text-slate-500">
+            Page {pagination.page} of{" "}
+            {Math.max(pagination.totalPages, 1)}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={page <= 1 || isLoading}
+              onClick={() =>
+                setPage((current) => Math.max(1, current - 1))
+              }
+              className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={
+                page >= Math.max(pagination.totalPages, 1) ||
+                isLoading
+              }
+              onClick={() => setPage((current) => current + 1)}
+              className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 

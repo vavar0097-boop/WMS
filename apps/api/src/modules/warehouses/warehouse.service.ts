@@ -2,6 +2,8 @@ import { WarehouseRepository } from "./warehouse.repository";
 import {
   BadRequestError,
   NotFoundError,
+  isForeignKeyViolation,
+  toDeleteConflictError,
 } from "../../utils/errors";
 
 const warehouseRepository = new WarehouseRepository();
@@ -91,6 +93,14 @@ export class WarehouseService {
       throw new NotFoundError("Warehouse not found");
     }
 
-    await warehouseRepository.delete(id);
+    try {
+      await warehouseRepository.delete(id);
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        throw toDeleteConflictError(error, "warehouse");
+      }
+
+      throw error;
+    }
   }
 }

@@ -683,10 +683,22 @@ export class FinanceService {
       settlements: reportSettlements,
     });
 
+    // A transient failure while syncing to Google Sheets (expired
+    // credentials, rate limiting, a network blip) must not take
+    // down the whole monthly report — the report data above is
+    // already computed and should still be returned to the user,
+    // with the sync failure reported alongside it instead of
+    // thrown as a 500/400 for the whole request.
     const google = params.sync_google
       ? await syncGoogleSheet({
           sheets,
-        })
+        }).catch((error) => ({
+          synced: false as const,
+          reason:
+            error instanceof Error
+              ? error.message
+              : "Google Sheets sync failed",
+        }))
       : {
           synced: false,
           reason: "Sync not requested",

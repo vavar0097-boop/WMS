@@ -3,6 +3,8 @@ import { supabase } from "../../config/supabase";
 import {
   BadRequestError,
   NotFoundError,
+  isForeignKeyViolation,
+  toDeleteConflictError,
 } from "../../utils/errors";
 
 const locationRepository = new LocationRepository();
@@ -162,6 +164,14 @@ export class LocationService {
       throw new NotFoundError("Location not found");
     }
 
-    await locationRepository.delete(id);
+    try {
+      await locationRepository.delete(id);
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        throw toDeleteConflictError(error, "location");
+      }
+
+      throw error;
+    }
   }
 }
