@@ -11,7 +11,7 @@ const startLocalWeb = process.env.WMS_START_LOCAL_WEB === "true";
 const appUrl =
   startLocalWeb
     ? process.env.WMS_LOCAL_APP_URL || "http://127.0.0.1:5173"
-    : process.env.WMS_APP_URL || "https://dodolanku.netlify.app";
+    : process.env.WMS_APP_URL || "https://wms-8uc.pages.dev";
 const recordRun = process.env.WMS_RECORD === "true";
 
 export default defineConfig({
@@ -36,14 +36,22 @@ export default defineConfig({
     navigationTimeout: 30_000,
   },
   webServer: startLocalWeb
-    ? {
-        command:
-          "VITE_API_BASE_URL=https://wms-production-23d1.up.railway.app npm run dev -- --host 127.0.0.1",
-        cwd: path.resolve(configDir, "../../apps/web"),
-        url: appUrl,
-        reuseExistingServer: true,
-        timeout: 120_000,
-      }
+    ? [
+        {
+          command: "npm run dev",
+          cwd: path.resolve(configDir, "../../apps/api"),
+          url: "http://127.0.0.1:3000/health",
+          reuseExistingServer: true,
+          timeout: 120_000,
+        },
+        {
+          command: "npm run dev -- --host 127.0.0.1",
+          cwd: path.resolve(configDir, "../../apps/web"),
+          url: appUrl,
+          reuseExistingServer: true,
+          timeout: 120_000,
+        },
+      ]
     : undefined,
   projects: [
     {

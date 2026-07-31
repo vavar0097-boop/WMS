@@ -3,20 +3,27 @@ export type Credentials = {
   password: string;
 };
 
-export type RoleName = "admin" | "finance" | "cashier";
+export type RoleName =
+  | "admin"
+  | "owner"
+  | "finance"
+  | "warehouse"
+  | "cashier";
 
 const roleEnv: Record<RoleName, [string, string]> = {
   admin: ["WMS_ADMIN_USERNAME", "WMS_ADMIN_PASSWORD"],
+  owner: ["WMS_OWNER_USERNAME", "WMS_OWNER_PASSWORD"],
   finance: ["WMS_FINANCE_USERNAME", "WMS_FINANCE_PASSWORD"],
+  warehouse: ["WMS_WAREHOUSE_USERNAME", "WMS_WAREHOUSE_PASSWORD"],
   cashier: ["WMS_CASHIER_USERNAME", "WMS_CASHIER_PASSWORD"],
 };
 
 export const appUrl =
-  process.env.WMS_APP_URL || "https://dodolanku.netlify.app";
+  process.env.WMS_APP_URL || "https://wms-8uc.pages.dev";
 
 export const apiBaseUrl =
   process.env.WMS_API_BASE_URL ||
-  "https://wms-production-23d1.up.railway.app";
+  "https://wms-api-production-2caf.up.railway.app";
 
 export const reportMonth =
   process.env.WMS_REPORT_MONTH || currentJakartaMonth();

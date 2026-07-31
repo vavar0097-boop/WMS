@@ -19,7 +19,9 @@ Fill `.env` with live QA credentials. The `.env` file is ignored by git.
 npm test
 ```
 
-The default run starts with the `setup` project. It logs in as admin, finance, and cashier, writes session files into `.auth/`, then the Firefox tests reuse those sessions.
+The default run starts with the `setup` project. It logs in as admin, owner,
+finance, warehouse, and cashier, writes session files into `.auth/`, then the
+Firefox tests reuse those sessions.
 
 If the shared hosting frontend is unavailable, run the suite against a local Vite
 frontend connected to the production API:
@@ -74,8 +76,11 @@ WMS_ALLOW_MUTATION=true
 The default tests verify:
 
 - admin dashboard can open
+- owner dashboard can access owner actions without forbidden API calls
+- finance dashboard only loads finance-authorized data
+- warehouse operational routes load without permission leaks
 - login form positive and negative flows pass
-- cashier POS route can open
+- cashier POS route can open in either `Open Shift` or active-cart state
 - dashboard shows POS sales by outlet
 - weekly movement card is gone
 - finance report API returns daily sheet names

@@ -22,8 +22,13 @@ import {
 import { globalReportService } from "@/features/global-report/services/global-report.service";
 import { stockService } from "@/features/stocks/services/stock.service";
 import { transferService } from "@/features/transfers/services/transfer.service";
+import {
+  hasPermission,
+  PERMISSIONS,
+} from "@/shared/auth/permissions";
 import { getApiErrorMessage } from "@/shared/lib/api/error";
 import { toast } from "@/shared/ui/toast";
+import { useAuthStore } from "@/stores/auth.store";
 
 type Stat = {
   label: string;
@@ -154,6 +159,18 @@ const defaultReportFrom = new Date(Date.now() - 29 * 86400000)
   .slice(0, 10);
 
 export function DashboardPage() {
+  const role = useAuthStore((state) => state.user?.role);
+  const canReadFinance = hasPermission(role, PERMISSIONS.FINANCE_READ);
+  const canReadTransfers = hasPermission(
+    role,
+    PERMISSIONS.TRANSFERS_READ,
+  );
+  const canReadStock = hasPermission(role, PERMISSIONS.STOCK_READ);
+  const canReadItems = hasPermission(role, PERMISSIONS.ITEMS_READ);
+  const canReadWarehouses = hasPermission(
+    role,
+    PERMISSIONS.WAREHOUSES_READ,
+  );
   const [stats, setStats] = useState<Stat[]>([]);
   const [movementSummary, setMovementSummary] =
     useState<MovementSummary>({
@@ -185,75 +202,98 @@ export function DashboardPage() {
           warehouses,
           salesResult,
         ] = await Promise.all([
-          transferService.getTransfers(),
-          stockService.getCurrentStocks({
-            page: 1,
-            limit: 1,
-          }),
-          masterDataPageService.getItems({
-            page: 1,
-            limit: 1,
-          }),
-          masterDataPageService.getWarehouses({
-            limit: 100,
-          }),
-          financeService.getPosSales({
-            limit: 100,
-          }).catch(() => []),
+          canReadTransfers ? transferService.getTransfers() : null,
+          canReadStock
+            ? stockService.getCurrentStocks({
+                page: 1,
+                limit: 1,
+              })
+            : null,
+          canReadItems
+            ? masterDataPageService.getItems({
+                page: 1,
+                limit: 1,
+              })
+            : null,
+          canReadWarehouses
+            ? masterDataPageService.getWarehouses({
+                limit: 100,
+              })
+            : null,
+          canReadFinance
+            ? financeService.getPosSales({
+                limit: 100,
+              })
+            : null,
         ]);
 
         if (!mounted) return;
 
-        const sales = summarizeSales(salesResult);
-        const salesByOutlet = summarizeOutletSales(salesResult);
+        const visibleSales = salesResult ?? [];
+        const sales = summarizeSales(visibleSales);
+        const salesByOutlet = summarizeOutletSales(visibleSales);
+        const nextStats: Stat[] = [];
 
-        setMovementSummary(sales);
-        setOutletSales(salesByOutlet);
-        setRecentSales(salesResult.slice(0, 5));
-        setLastUpdatedAt(new Date());
-
-        setStats([
-          {
+        if (canReadFinance) {
+          nextStats.push({
             label: "POS Sales",
             value: sales.salesCount,
             href: "/dashboard/finance",
             icon: ShoppingCart,
             tone: "from-rose-500 to-orange-500",
             accent: "bg-rose-50 text-rose-700",
-          },
-          {
+          });
+        }
+
+        if (transfers) {
+          nextStats.push({
             label: "Transfers",
             value: transfers.length,
             href: "/dashboard/transfers",
             icon: ArrowLeftRight,
             tone: "from-teal-500 to-cyan-500",
             accent: "bg-teal-50 text-teal-700",
-          },
-          {
+          });
+        }
+
+        if (stocks) {
+          nextStats.push({
             label: "Stock Rows",
             value: stocks.pagination.total,
             href: "/dashboard/stock",
             icon: Boxes,
             tone: "from-emerald-500 to-teal-500",
             accent: "bg-emerald-50 text-emerald-700",
-          },
-          {
+          });
+        }
+
+        if (items) {
+          nextStats.push({
             label: "Items",
             value: items.pagination.total,
             href: "/dashboard/items",
             icon: Package,
             tone: "from-sky-500 to-indigo-500",
             accent: "bg-sky-50 text-sky-700",
-          },
-          {
+          });
+        }
+
+        if (warehouses) {
+          nextStats.push({
             label: "Warehouses",
             value: warehouses.length,
             href: "/dashboard/warehouses",
             icon: Warehouse,
             tone: "from-violet-500 to-fuchsia-500",
             accent: "bg-violet-50 text-violet-700",
-          },
-        ]);
+          });
+        }
+
+        setMovementSummary(sales);
+        setOutletSales(salesByOutlet);
+        setRecentSales(visibleSales.slice(0, 5));
+        setLastUpdatedAt(new Date());
+        setStats(nextStats);
       } catch (error) {
         if (!mounted) return;
 
@@ -275,7 +315,14 @@ export function DashboardPage() {
       mounted = false;
       if (timer) window.clearInterval(timer);
     };
-  }, [reloadKey]);
+  }, [
+    canReadFinance,
+    canReadItems,
+    canReadStock,
+    canReadTransfers,
+    canReadWarehouses,
+    reloadKey,
+  ]);
 
   const total = useMemo(
     () => stats.reduce((sum, stat) => sum + stat.value, 0),
@@ -332,7 +379,7 @@ export function DashboardPage() {
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm">
             Updated {lastUpdatedAt ? formatDateTime(lastUpdatedAt.toISOString()) : "-"}
           </div>
-          {reportUrl ? (
+          {canReadFinance && reportUrl ? (
             <a
               href={reportUrl}
               target="_blank"
@@ -343,15 +390,19 @@ export function DashboardPage() {
               Open Sheet
             </a>
           ) : null}
-          <button
-            type="button"
-            onClick={handleGenerateGlobalReport}
-            disabled={isGeneratingReport}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100 disabled:opacity-60"
-          >
-            <FileSpreadsheet size={16} />
-            {isGeneratingReport ? "Generating..." : "Generate Global Report"}
-          </button>
+          {canReadFinance ? (
+            <button
+              type="button"
+              onClick={handleGenerateGlobalReport}
+              disabled={isGeneratingReport}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100 disabled:opacity-60"
+            >
+              <FileSpreadsheet size={16} />
+              {isGeneratingReport
+                ? "Generating..."
+                : "Generate Global Report"}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setReloadKey((value) => value + 1)}
@@ -407,7 +458,8 @@ export function DashboardPage() {
             })}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+      {canReadFinance ? (
+        <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -534,7 +586,8 @@ export function DashboardPage() {
             ) : null}
           </div>
         </section>
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

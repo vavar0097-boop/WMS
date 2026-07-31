@@ -16,11 +16,22 @@ test.describe("role entry points", () => {
   test.describe("cashier", () => {
     test.use({ storageState: storageStatePath("cashier") });
 
-    test("cashier lands on POS", async ({ page }) => {
+    test("cashier lands on POS with a usable shift state", async ({ page }) => {
       await page.goto("/");
 
       await expect(page).toHaveURL(/\/pos/);
-      await expect(page.getByRole("heading", { name: "Cart" })).toBeVisible();
+      const cart = page.getByRole("heading", { name: "Cart" });
+      const openShift = page.getByRole("heading", { name: "Open Shift" });
+
+      await expect(cart.or(openShift)).toBeVisible();
+
+      if (await openShift.isVisible()) {
+        await expect(
+          page.getByRole("button", { name: "Start Selling" }),
+        ).toBeVisible();
+        return;
+      }
+
       await expect(
         page.getByRole("button", { name: "Confirm Payment" }),
       ).toBeVisible();

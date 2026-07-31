@@ -8,7 +8,13 @@ import {
   storageStatePath,
 } from "../src/env";
 
-const roles: RoleName[] = ["admin", "finance", "cashier"];
+const roles: RoleName[] = [
+  "admin",
+  "owner",
+  "finance",
+  "warehouse",
+  "cashier",
+];
 
 for (const role of roles) {
   setup(`login as ${role}`, async ({ page }) => {
